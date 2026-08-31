@@ -194,3 +194,13 @@ def default_readonly_registry() -> ToolRegistry:
     reg = ToolRegistry()
     register_readonly_tools(reg)
     return reg
+
+
+def build_registry(*, writable: bool = False) -> ToolRegistry:
+    """읽기 도구 + (옵션) 쓰기/실행 도구를 등록한 레지스트리."""
+    reg = default_readonly_registry()
+    if writable:
+        from gigachanie.loop.write_tools import register_write_tools
+
+        register_write_tools(reg)
+    return reg
