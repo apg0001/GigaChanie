@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gigachanie"
+version = "0.0.1"
+description = "오픈 웨이트 LLM(Qwen, Llama, DeepSeek 등)으로 동작하는 코딩 에이전트 CLI"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "apg0001" }]
+keywords = ["llm", "coding-agent", "cli", "qwen", "llama", "ollama"]
+
+dependencies = [
+    "typer>=0.12",
+    "rich>=13.7",
+    "psutil>=6.0",
+    "pyyaml>=6.0",
+    "httpx>=0.27",
+    "platformdirs>=4.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-pyyaml",
+]
+
+[project.scripts]
+giga = "gigachanie.cli:app"
+
+[project.urls]
+Repository = "https://github.com/apg0001/GigaChanie"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gigachanie"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src/gigachanie"]
