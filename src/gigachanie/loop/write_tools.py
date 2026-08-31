@@ -12,6 +12,7 @@ import os
 from typing import Any
 
 from gigachanie.loop.approval import ApprovalRequest
+from gigachanie.loop.edit import EditError, apply_edit
 from gigachanie.loop.tools import ToolContext, ToolError, ToolRegistry, ToolResult
 
 _MAX_OUTPUT = 20_000
@@ -64,6 +65,47 @@ async def _write_file(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     )
 
 
+async def _apply_edit(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
+    path = args.get("path")
+    if not path:
+        raise ToolError("path 인자가 필요합니다.")
+    if "search" not in args or "replace" not in args:
+        raise ToolError("search 와 replace 인자가 필요합니다.")
+    search, replace = args["search"], args["replace"]
+    if not isinstance(search, str) or not isinstance(replace, str):
+        raise ToolError("search / replace 는 문자열이어야 합니다.")
+
+    target = ctx.resolve(path)
+    exists = target.is_file()
+    old = target.read_text("utf-8", errors="replace") if exists else ""
+
+    try:
+        result = apply_edit(old, search, replace, file_exists=exists)
+    except EditError as exc:
+        return ToolResult.error(f"편집 실패 ({path}): {exc}")
+
+    if result.new_content == old:
+        return ToolResult(content=f"변경 없음: {path}")
+
+    diff = _unified_diff(old, result.new_content, path)
+    allowed, reason = ctx.policy.check(
+        ApprovalRequest(
+            kind="write",
+            summary=f"편집: {path} ({result.method.value})",
+            detail=diff,
+        )
+    )
+    if not allowed:
+        return ToolResult.error(f"편집 거부됨 ({reason}): {path}")
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(result.new_content, encoding="utf-8")
+    where = f" @{result.start_line}행" if result.start_line else ""
+    return ToolResult(
+        content=f"편집 적용됨: {path}{where} (매칭: {result.method.value})\n{diff[:2000]}"
+    )
+
+
 def _shell_argv(cmd: str) -> list[str]:
     if os.name == "nt":
         # PowerShell 은 네이티브 명령의 종료코드를 자기 종료코드로 전파하지 않으므로
@@ -113,6 +155,22 @@ async def _run_shell(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
 
 
 def register_write_tools(reg: ToolRegistry) -> None:
+    reg.register_func(
+        "apply_edit",
+        "파일의 일부를 바꾼다. search(현재 코드 그대로) 를 찾아 replace 로 교체한다. "
+        "search 는 파일에서 유일하게 식별되도록 충분한 문맥을 포함해야 한다. "
+        "새 파일을 만들려면 search 를 빈 문자열로 두고 replace 에 전체 내용을 넣는다.",
+        {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"},
+                "search": {"type": "string", "description": "교체할 기존 텍스트(정확히)"},
+                "replace": {"type": "string", "description": "새 텍스트"},
+            },
+            "required": ["path", "search", "replace"],
+        },
+        _apply_edit,
+    )
     reg.register_func(
         "write_file",
         "파일 전체 내용을 쓴다(신규 생성 또는 덮어쓰기). 부분 수정은 apply_edit 를 쓴다.",
