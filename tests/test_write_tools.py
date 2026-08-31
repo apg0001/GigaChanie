@@ -69,6 +69,49 @@ def test_run_shell_비정상_종료코드(tmp_path: Path) -> None:
     assert "[종료코드 3]" in res.content
 
 
+def test_apply_edit_부분수정(tmp_path: Path) -> None:
+    (tmp_path / "m.py").write_text("def f():\n    return 1\n", encoding="utf-8")
+    res = _run(
+        "apply_edit",
+        {"path": "m.py", "search": "    return 1", "replace": "    return 2"},
+        _ctx(tmp_path),
+    )
+    assert not res.is_error
+    assert (tmp_path / "m.py").read_text(encoding="utf-8") == "def f():\n    return 2\n"
+
+
+def test_apply_edit_새파일_search_빈문자열(tmp_path: Path) -> None:
+    res = _run(
+        "apply_edit",
+        {"path": "new/created.txt", "search": "", "replace": "안녕"},
+        _ctx(tmp_path),
+    )
+    assert not res.is_error
+    assert (tmp_path / "new" / "created.txt").read_text(encoding="utf-8") == "안녕\n"
+
+
+def test_apply_edit_매칭실패는_오류결과(tmp_path: Path) -> None:
+    (tmp_path / "m.py").write_text("x = 1\n", encoding="utf-8")
+    res = _run(
+        "apply_edit",
+        {"path": "m.py", "search": "y = 2", "replace": "y = 3"},
+        _ctx(tmp_path),
+    )
+    assert res.is_error
+    assert "편집 실패" in res.content
+
+
+def test_apply_edit_승인거부(tmp_path: Path) -> None:
+    (tmp_path / "m.py").write_text("a = 1\n", encoding="utf-8")
+    res = _run(
+        "apply_edit",
+        {"path": "m.py", "search": "a = 1", "replace": "a = 2"},
+        _ctx(tmp_path, allow=False),
+    )
+    assert res.is_error
+    assert (tmp_path / "m.py").read_text(encoding="utf-8") == "a = 1\n"
+
+
 def test_run_shell_타임아웃(tmp_path: Path) -> None:
     res = _run(
         "run_shell",
