@@ -1,17 +1,21 @@
-"""`giga agent` - 에이전트 루프를 한 번 실행한다 (읽기 전용 도구).
+"""`giga agent` - 에이전트 루프를 한 번 실행한다.
 
-대화형 REPL 은 이슈 #8, 파일 수정/셸 도구는 이후 이슈에서 추가된다.
+읽기 도구는 항상, 쓰기/실행 도구는 --write 로 활성화한다.
+승인 모드는 --mode (suggest | auto-edit | full-auto), --yolo 는 full-auto + write 단축.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import typer
 from rich.console import Console
+from rich.syntax import Syntax
 
 from gigachanie.loop.agent import Agent, AgentEvent
-from gigachanie.loop.builtin_tools import default_readonly_registry
+from gigachanie.loop.approval import ApprovalMode, ApprovalPolicy, ApprovalRequest
+from gigachanie.loop.builtin_tools import build_registry
 from gigachanie.loop.tools import ToolContext
 from gigachanie.serving.base import BackendError, run_sync
 from gigachanie.serving.factory import build_backend
@@ -19,7 +23,16 @@ from gigachanie.serving.factory import build_backend
 console = Console()
 
 
-def _make_printer() -> tuple[object, list[str]]:
+def _interactive_approver(req: ApprovalRequest) -> bool:
+    console.print()
+    console.print(f"[yellow bold]승인 요청[/yellow bold] · {req.summary}")
+    if req.detail:
+        lexer = "diff" if req.kind == "write" else "bash"
+        console.print(Syntax(req.detail[:4000], lexer, theme="ansi_dark", word_wrap=True))
+    return typer.confirm("실행할까요?", default=False)
+
+
+def _make_printer() -> Callable[[AgentEvent], None]:
     state = {"streaming": False}
 
     def handle(ev: AgentEvent) -> None:
@@ -39,47 +52,64 @@ def _make_printer() -> tuple[object, list[str]]:
             console.print(f"[cyan]→ {ev.tool_name}[/cyan]({args})")
         elif ev.kind == "tool_result":
             style = "red" if ev.is_error else "green"
-            preview = ev.text if len(ev.text) <= 600 else ev.text[:600] + " …"
+            preview = ev.text if len(ev.text) <= 800 else ev.text[:800] + " …"
             console.print(f"[{style}]{preview}[/{style}]", markup=False, soft_wrap=True)
         elif ev.kind == "error":
             console.print(f"[red]오류: {ev.text}[/red]")
 
-    return handle, []
+    return handle
 
 
 def agent(
     task: list[str] = typer.Argument(..., help="에이전트에게 시킬 작업."),
-    root: Path = typer.Option(
-        Path("."), "--root", "-C", help="작업 루트 디렉터리."
+    root: Path = typer.Option(Path("."), "--root", "-C", help="작업 루트 디렉터리."),
+    write: bool = typer.Option(
+        False, "--write", "-w", help="쓰기/실행 도구(write_file, run_shell) 활성화."
+    ),
+    mode: str = typer.Option(
+        "suggest", "--mode", help="승인 모드: suggest | auto-edit | full-auto."
+    ),
+    yolo: bool = typer.Option(
+        False, "--yolo", help="full-auto + write. 확인 없이 전부 실행(주의)."
     ),
     max_steps: int = typer.Option(20, "--max-steps", help="최대 반복 스텝."),
     temperature: float = typer.Option(0.0, "--temperature", "-t"),
 ) -> None:
-    """읽기 전용 도구로 코드베이스 질문에 답하거나 조사한다."""
+    """도구를 사용해 코드베이스를 조사하거나 수정한다."""
     task_text = " ".join(task)
+    try:
+        approval_mode = ApprovalMode.parse("full-auto" if yolo else mode)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=2) from None
+
+    writable = write or yolo
     try:
         backend = build_backend()
     except BackendError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=1) from None
 
-    tools = default_readonly_registry()
-    ctx = ToolContext(root=root.resolve())
+    tools = build_registry(writable=writable)
+    policy = ApprovalPolicy(
+        mode=approval_mode,
+        approver=None if yolo else _interactive_approver,
+    )
+    ctx = ToolContext(root=root.resolve(), policy=policy)
     if not ctx.root.is_dir():
         console.print(f"[red]디렉터리가 아닙니다: {root}[/red]")
         raise typer.Exit(code=1)
 
     console.print(
-        f"[dim]모델 {backend.model} · 도구 {', '.join(tools.names())} · 루트 {ctx.root}[/dim]"
+        f"[dim]모델 {backend.model} · 도구 {', '.join(tools.names())} · "
+        f"모드 {approval_mode.value}{' · yolo' if yolo else ''} · 루트 {ctx.root}[/dim]"
     )
-    handler, _ = _make_printer()
-    ag = Agent(
-        backend, tools, ctx, max_steps=max_steps, temperature=temperature
-    )
+    handler = _make_printer()
+    ag = Agent(backend, tools, ctx, max_steps=max_steps, temperature=temperature)
 
     async def _go() -> int:
         try:
-            result = await ag.run(task_text, on_event=handler)  # type: ignore[arg-type]
+            result = await ag.run(task_text, on_event=handler)
         finally:
             await backend.close()
         console.print()

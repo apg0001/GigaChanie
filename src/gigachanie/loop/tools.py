@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
+from gigachanie.loop.approval import ApprovalPolicy
 from gigachanie.serving.base import ToolSpec
 
 
@@ -19,8 +20,8 @@ class ToolContext:
     """도구 실행 환경."""
 
     root: Path
-    # 승인 콜백: (요약) -> 허용 여부. None 이면 항상 허용(자동 모드).
-    approve: Callable[[str], bool] | None = None
+    # 쓰기/실행 도구가 참조하는 승인 정책. 기본값은 "쓰기/실행 거부".
+    policy: ApprovalPolicy = field(default_factory=ApprovalPolicy)
     # 도구가 남기는 부가 메모(감사 로그 등)
     scratch: dict[str, Any] = field(default_factory=dict)
 
