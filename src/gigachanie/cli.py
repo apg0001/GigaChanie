@@ -11,6 +11,7 @@ from rich.console import Console
 from gigachanie import __version__
 from gigachanie.commands import agent as agent_cmd
 from gigachanie.commands import ask as ask_cmd
+from gigachanie.commands import chat as chat_cmd
 from gigachanie.commands import doctor as doctor_cmd
 from gigachanie.commands import model as model_cmd
 
@@ -26,6 +27,7 @@ app.command("doctor")(doctor_cmd.doctor)
 app.command("ask")(ask_cmd.ask)
 app.command("ping")(ask_cmd.ping)
 app.command("agent")(agent_cmd.agent)
+app.command("chat")(chat_cmd.chat)
 app.add_typer(model_cmd.app, name="model")
 
 
