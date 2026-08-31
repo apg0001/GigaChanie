@@ -28,6 +28,7 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
     "types-pyyaml",
+    "types-psutil",
 ]
 
 [project.scripts]
@@ -38,6 +39,7 @@ Repository = "https://github.com/apg0001/GigaChanie"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/gigachanie"]
+include = ["src/gigachanie/**/*.py", "src/gigachanie/**/*.yaml"]
 
 [tool.ruff]
 line-length = 100
@@ -54,3 +56,7 @@ asyncio_mode = "auto"
 python_version = "3.11"
 strict = true
 files = ["src/gigachanie"]
+
+[[tool.mypy.overrides]]
+module = ["psutil"]
+ignore_missing_imports = true

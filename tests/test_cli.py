@@ -20,6 +20,19 @@ def test_도움말_출력() -> None:
     assert "코딩 에이전트" in result.stdout
 
 
-def test_hello_명령() -> None:
-    result = runner.invoke(app, ["hello"])
+def test_doctor_실행() -> None:
+    result = runner.invoke(app, ["doctor", "--json"])
     assert result.exit_code == 0
+    assert '"hardware"' in result.stdout
+    assert '"recommendations"' in result.stdout
+
+
+def test_model_list_실행() -> None:
+    result = runner.invoke(app, ["model", "list"])
+    assert result.exit_code == 0
+    assert "qwen" in result.stdout.lower()
+
+
+def test_model_use_알수없는ID() -> None:
+    result = runner.invoke(app, ["model", "use", "존재하지-않는-모델"])
+    assert result.exit_code == 1
