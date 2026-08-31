@@ -8,14 +8,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from functools import lru_cache
 from importlib import resources
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 
 _REGISTRY_FILE = "model_registry.yaml"
 
-ToolCalling = str  # "native" | "prompt" | "none"
-ModelKind = str  # "coder" | "general" | "reasoning"
+ToolCalling = Literal["native", "prompt", "none"]
+ModelKind = Literal["coder", "general", "reasoning"]
 
 
 @dataclass(frozen=True)
