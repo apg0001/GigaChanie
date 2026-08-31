@@ -1,0 +1,65 @@
+"""설정으로부터 백엔드 인스턴스를 만든다."""
+
+from __future__ import annotations
+
+import os
+
+from gigachanie.config import Config, load_config
+from gigachanie.providers.registry import Registry, ToolCalling, default_registry
+from gigachanie.serving.base import Backend, BackendError
+from gigachanie.serving.ollama import OllamaBackend
+from gigachanie.serving.openai_compat import OpenAICompatBackend
+
+
+def _resolve_model_name(cfg: Config, reg: Registry) -> tuple[str, ToolCalling]:
+    """(백엔드에 넘길 모델 문자열, tool_mode) 를 결정한다."""
+    tool_mode: ToolCalling = "native"
+    model_name = cfg.model_id or ""
+    if cfg.model_id:
+        entry = reg.get(cfg.model_id)
+        if entry is not None:
+            tool_mode = entry.tool_calling
+            if cfg.backend == "ollama" and entry.ollama_tag:
+                model_name = entry.ollama_tag
+    return model_name, tool_mode
+
+
+def build_backend(cfg: Config | None = None, reg: Registry | None = None) -> Backend:
+    """현재 설정에 맞는 백엔드를 생성한다.
+
+    모델은 `giga model use` 로 먼저 선택돼 있어야 한다.
+    """
+    cfg = cfg or load_config()
+    reg = reg or default_registry()
+
+    if not cfg.model_id:
+        raise BackendError(
+            "선택된 모델이 없습니다. `giga model use <ID>` 또는 `giga doctor` 를 먼저 실행하세요."
+        )
+
+    model_name, tool_mode = _resolve_model_name(cfg, reg)
+
+    if cfg.backend == "ollama":
+        return OllamaBackend(
+            model=model_name,
+            tool_mode=tool_mode,
+            num_ctx=cfg.context,
+        )
+
+    if cfg.backend == "openai_compat":
+        base_url = cfg.base_url or os.environ.get("GIGA_BASE_URL")
+        if not base_url:
+            raise BackendError(
+                "openai_compat 백엔드에는 base_url 이 필요합니다 "
+                "(`giga model use <ID> --base-url http://localhost:8000/v1`)."
+            )
+        api_key = os.environ.get("GIGA_API_KEY") or os.environ.get("OPENAI_API_KEY")
+        return OpenAICompatBackend(
+            model=model_name,
+            base_url=base_url,
+            api_key=api_key,
+            tool_mode=tool_mode,
+            default_context=cfg.context,
+        )
+
+    raise BackendError(f"알 수 없는 백엔드: {cfg.backend!r} (ollama | openai_compat)")
