@@ -1,6 +1,6 @@
 """GigaChanie CLI 진입점.
 
-각 하위 명령은 별도 모듈에서 구현하고 이 파일에서 등록만 한다.
+각 하위 명령은 `gigachanie.commands` 하위 모듈에서 구현하고 여기서 등록만 한다.
 """
 
 from __future__ import annotations
@@ -9,6 +9,8 @@ import typer
 from rich.console import Console
 
 from gigachanie import __version__
+from gigachanie.commands import doctor as doctor_cmd
+from gigachanie.commands import model as model_cmd
 
 app = typer.Typer(
     name="giga",
@@ -17,6 +19,9 @@ app = typer.Typer(
     add_completion=False,
 )
 console = Console()
+
+app.command("doctor")(doctor_cmd.doctor)
+app.add_typer(model_cmd.app, name="model")
 
 
 def _version_callback(value: bool) -> None:
@@ -37,13 +42,6 @@ def main(
     ),
 ) -> None:
     """GigaChanie - 로컬/오픈모델 기반 코딩 에이전트."""
-
-
-@app.command()
-def hello() -> None:
-    """설치가 정상인지 확인하는 임시 명령. (이후 제거 예정)"""
-    console.print("[bold green]GigaChanie 준비 완료[/bold green]")
-    console.print("`giga --help` 로 명령을 확인하세요.")
 
 
 if __name__ == "__main__":

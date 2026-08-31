@@ -1,0 +1,539 @@
+# GigaChanie 모델 레지스트리
+#
+# 각 모델의 메타데이터. `giga doctor` 가 이 목록과 감지된 하드웨어를 대조해
+# 실행 가능 모델을 추천한다. 사용자는 `giga model list / use` 로 직접 선택한다.
+#
+# 필드 설명:
+#   id             : 내부 식별자 (kebab-case)
+#   display        : 사람이 읽는 이름
+#   family         : 계열 (qwen, llama, deepseek, mistral, glm, google, microsoft, ...)
+#   kind           : coder | general | reasoning
+#   params_b       : 총 파라미터 (10억 단위)
+#   active_params_b: 추론 시 활성 파라미터 (MoE가 아니면 params_b 와 동일). 속도 추정에 사용
+#   context        : 권장 기본 컨텍스트 길이(토큰)
+#   max_context    : 모델이 지원하는 최대 컨텍스트
+#   tool_calling   : native | prompt | none
+#   vision         : 멀티모달(이미지) 지원 여부
+#   layers/kv_heads/head_dim : KV 캐시 크기 계산용 (transformers config 기준)
+#   license        : 라이선스 식별자
+#   backends       : 구동 가능한 백엔드
+#   ollama_tag     : ollama 에서 pull 할 태그 (있으면)
+#   quants         : 양자화별 가중치 크기(GB). weights_gb 는 파일 크기 근사치
+#   notes          : 비고
+
+schema_version: 1
+
+defaults:
+  # KV 캐시 1토큰당 바이트 = 2(K,V) * layers * kv_heads * head_dim * kv_dtype_bytes
+  kv_dtype_bytes: 2          # fp16 기준. Q8 KV 캐시 사용 시 1
+  runtime_overhead_gb: 1.0   # 활성화 텐서 + 프레임워크 오버헤드 여유
+  min_useful_context: 8192   # 이 값 미만이면 "실행 불가"로 간주
+  target_context: 16384      # 추천 시 확보하려는 컨텍스트
+
+models:
+  # ---------- Qwen ----------
+  - id: qwen2.5-coder-7b-instruct
+    display: Qwen2.5-Coder 7B Instruct
+    family: qwen
+    kind: coder
+    params_b: 7.6
+    active_params_b: 7.6
+    context: 32768
+    max_context: 131072
+    tool_calling: native
+    vision: false
+    layers: 28
+    kv_heads: 4
+    head_dim: 128
+    license: apache-2.0
+    backends: [ollama, openai_compat]
+    ollama_tag: "qwen2.5-coder:7b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 4.7 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 8.1 }
+      - { name: fp16, bpw: 16, weights_gb: 15.2 }
+    notes: 저사양/노트북용 기본. 단순 편집 위주.
+
+  - id: qwen2.5-coder-14b-instruct
+    display: Qwen2.5-Coder 14B Instruct
+    family: qwen
+    kind: coder
+    params_b: 14.7
+    active_params_b: 14.7
+    context: 32768
+    max_context: 131072
+    tool_calling: native
+    vision: false
+    layers: 48
+    kv_heads: 8
+    head_dim: 128
+    license: apache-2.0
+    backends: [ollama, openai_compat]
+    ollama_tag: "qwen2.5-coder:14b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 9.0 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 15.7 }
+    notes: 16~24GB 램에서 안전한 기본값.
+
+  - id: qwen2.5-coder-32b-instruct
+    display: Qwen2.5-Coder 32B Instruct
+    family: qwen
+    kind: coder
+    params_b: 32.5
+    active_params_b: 32.5
+    context: 32768
+    max_context: 131072
+    tool_calling: native
+    vision: false
+    layers: 64
+    kv_heads: 8
+    head_dim: 128
+    license: apache-2.0
+    backends: [ollama, openai_compat]
+    ollama_tag: "qwen2.5-coder:32b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 19.9 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 34.8 }
+    notes: 오픈 코딩모델 품질 상한선급. 32GB 통합메모리에서 q4 가능하나 KV 여유 적음.
+
+  - id: qwen3-coder-30b-a3b-instruct
+    display: Qwen3-Coder 30B-A3B Instruct
+    family: qwen
+    kind: coder
+    params_b: 30.5
+    active_params_b: 3.3
+    context: 32768
+    max_context: 262144
+    tool_calling: native
+    vision: false
+    layers: 48
+    kv_heads: 4
+    head_dim: 128
+    license: apache-2.0
+    backends: [ollama, openai_compat]
+    ollama_tag: "qwen3-coder:30b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 18.6 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 32.5 }
+    notes: MoE 활성 3.3B. 속도/컨텍스트 효율이 좋아 32GB Mac 1순위 추천.
+
+  - id: qwen3-8b
+    display: Qwen3 8B
+    family: qwen
+    kind: general
+    params_b: 8.2
+    active_params_b: 8.2
+    context: 32768
+    max_context: 131072
+    tool_calling: native
+    vision: false
+    layers: 36
+    kv_heads: 8
+    head_dim: 128
+    license: apache-2.0
+    backends: [ollama, openai_compat]
+    ollama_tag: "qwen3:8b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 5.2 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 8.9 }
+    notes: 하이브리드 사고 모드 지원. 범용 보조/검수용.
+
+  # ---------- Mistral ----------
+  - id: devstral-small-2507
+    display: Devstral Small (24B)
+    family: mistral
+    kind: coder
+    params_b: 23.6
+    active_params_b: 23.6
+    context: 131072
+    max_context: 131072
+    tool_calling: native
+    vision: false
+    layers: 40
+    kv_heads: 8
+    head_dim: 128
+    license: apache-2.0
+    backends: [ollama, openai_compat]
+    ollama_tag: "devstral:24b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 14.3 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 25.1 }
+    notes: 에이전트형 코딩 특화(SWE-bench 오픈모델 상위). 32GB Mac / 단일 24GB GPU 타깃.
+
+  - id: codestral-22b
+    display: Codestral 22B
+    family: mistral
+    kind: coder
+    params_b: 22.2
+    active_params_b: 22.2
+    context: 32768
+    max_context: 32768
+    tool_calling: prompt
+    vision: false
+    layers: 56
+    kv_heads: 8
+    head_dim: 128
+    license: mnpl
+    backends: [ollama, openai_compat]
+    ollama_tag: "codestral:22b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 13.3 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 23.6 }
+    notes: 코드 생성/FIM 강함. 라이선스는 비상업 제한(MNPL) 주의.
+
+  - id: mistral-small-3.2-24b-instruct
+    display: Mistral Small 3.2 24B Instruct
+    family: mistral
+    kind: general
+    params_b: 24.0
+    active_params_b: 24.0
+    context: 131072
+    max_context: 131072
+    tool_calling: native
+    vision: true
+    layers: 40
+    kv_heads: 8
+    head_dim: 128
+    license: apache-2.0
+    backends: [ollama, openai_compat]
+    ollama_tag: "mistral-small:24b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 14.3 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 25.1 }
+    notes: 범용 + 비전. 검수/멀티모달 경로에 활용.
+
+  # ---------- DeepSeek ----------
+  - id: deepseek-coder-v2-lite-instruct
+    display: DeepSeek-Coder-V2 Lite Instruct (16B-A2.4B)
+    family: deepseek
+    kind: coder
+    params_b: 15.7
+    active_params_b: 2.4
+    context: 32768
+    max_context: 163840
+    tool_calling: prompt
+    vision: false
+    layers: 27
+    kv_heads: 16
+    head_dim: 128
+    license: deepseek
+    backends: [ollama, openai_compat]
+    ollama_tag: "deepseek-coder-v2:16b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 10.4 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 16.7 }
+    notes: MoE 활성 2.4B로 매우 빠름. 저사양 대안.
+
+  - id: deepseek-r1-distill-qwen-14b
+    display: DeepSeek-R1 Distill Qwen 14B
+    family: deepseek
+    kind: reasoning
+    params_b: 14.8
+    active_params_b: 14.8
+    context: 32768
+    max_context: 131072
+    tool_calling: prompt
+    vision: false
+    layers: 48
+    kv_heads: 8
+    head_dim: 128
+    license: mit
+    backends: [ollama, openai_compat]
+    ollama_tag: "deepseek-r1:14b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 9.0 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 15.7 }
+    notes: 사고 특화. 계획/디버깅 라우팅 대상.
+
+  # ---------- Zhipu GLM ----------
+  - id: glm-4-9b-chat
+    display: GLM-4 9B Chat
+    family: glm
+    kind: general
+    params_b: 9.4
+    active_params_b: 9.4
+    context: 131072
+    max_context: 131072
+    tool_calling: native
+    vision: false
+    layers: 40
+    kv_heads: 4
+    head_dim: 128
+    license: glm
+    backends: [ollama, openai_compat]
+    ollama_tag: "glm4:9b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 6.0 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 10.0 }
+    notes: 긴 컨텍스트 + 툴콜. 범용 보조.
+
+  - id: codegeex4-all-9b
+    display: CodeGeeX4 All 9B
+    family: glm
+    kind: coder
+    params_b: 9.4
+    active_params_b: 9.4
+    context: 131072
+    max_context: 131072
+    tool_calling: prompt
+    vision: false
+    layers: 40
+    kv_heads: 4
+    head_dim: 128
+    license: glm
+    backends: [ollama, openai_compat]
+    ollama_tag: "codegeex4:9b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 6.0 }
+    notes: 코드 특화, 다국어 코드 생성/보간.
+
+  # ---------- Meta Llama ----------
+  - id: llama-3.1-8b-instruct
+    display: Llama 3.1 8B Instruct
+    family: llama
+    kind: general
+    params_b: 8.0
+    active_params_b: 8.0
+    context: 131072
+    max_context: 131072
+    tool_calling: native
+    vision: false
+    layers: 32
+    kv_heads: 8
+    head_dim: 128
+    license: llama-3.1
+    backends: [ollama, openai_compat]
+    ollama_tag: "llama3.1:8b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 4.9 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 8.5 }
+    notes: 범용/검수. 코드 성능은 전용 모델보다 낮음.
+
+  - id: llama-3.3-70b-instruct
+    display: Llama 3.3 70B Instruct
+    family: llama
+    kind: general
+    params_b: 70.6
+    active_params_b: 70.6
+    context: 131072
+    max_context: 131072
+    tool_calling: native
+    vision: false
+    layers: 80
+    kv_heads: 8
+    head_dim: 128
+    license: llama-3.3
+    backends: [ollama, openai_compat]
+    ollama_tag: "llama3.3:70b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 43.0 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 75.0 }
+    notes: 다GPU/대용량 워크스테이션용.
+
+  # ---------- Google Gemma ----------
+  - id: gemma-2-27b-it
+    display: Gemma 2 27B Instruct
+    family: google
+    kind: general
+    params_b: 27.2
+    active_params_b: 27.2
+    context: 8192
+    max_context: 8192
+    tool_calling: prompt
+    vision: false
+    layers: 46
+    kv_heads: 16
+    head_dim: 128
+    license: gemma
+    backends: [ollama, openai_compat]
+    ollama_tag: "gemma2:27b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 16.6 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 28.9 }
+    notes: 컨텍스트 8k 제약이 커 에이전트 용도로는 제한적.
+
+  - id: gemma-3-12b-it
+    display: Gemma 3 12B Instruct
+    family: google
+    kind: general
+    params_b: 12.2
+    active_params_b: 12.2
+    context: 131072
+    max_context: 131072
+    tool_calling: prompt
+    vision: true
+    layers: 48
+    kv_heads: 8
+    head_dim: 256
+    license: gemma
+    backends: [ollama, openai_compat]
+    ollama_tag: "gemma3:12b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 7.5 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 12.5 }
+    notes: 긴 컨텍스트 + 비전. head_dim 256이라 KV 캐시가 큰 편.
+
+  # ---------- Microsoft Phi ----------
+  - id: phi-4
+    display: Phi-4 (14B)
+    family: microsoft
+    kind: general
+    params_b: 14.7
+    active_params_b: 14.7
+    context: 16384
+    max_context: 16384
+    tool_calling: prompt
+    vision: false
+    layers: 40
+    kv_heads: 10
+    head_dim: 128
+    license: mit
+    backends: [ollama, openai_compat]
+    ollama_tag: "phi4:14b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 9.1 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 15.6 }
+    notes: 추론/수학 강점, 컨텍스트 16k. 검수·판정 후보.
+
+  # ---------- BigCode ----------
+  - id: starcoder2-15b
+    display: StarCoder2 15B
+    family: bigcode
+    kind: coder
+    params_b: 16.0
+    active_params_b: 16.0
+    context: 16384
+    max_context: 16384
+    tool_calling: none
+    vision: false
+    layers: 40
+    kv_heads: 4
+    head_dim: 128
+    license: bigcode-openrail-m
+    backends: [ollama, openai_compat]
+    ollama_tag: "starcoder2:15b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 9.6 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 16.0 }
+    notes: 코드 보간(FIM) 특화. 대화/툴콜 약함 → 자동완성 보조용.
+
+  # ---------- 01.AI ----------
+  - id: yi-coder-9b-chat
+    display: Yi-Coder 9B Chat
+    family: yi
+    kind: coder
+    params_b: 8.8
+    active_params_b: 8.8
+    context: 131072
+    max_context: 131072
+    tool_calling: prompt
+    vision: false
+    layers: 48
+    kv_heads: 4
+    head_dim: 128
+    license: apache-2.0
+    backends: [ollama, openai_compat]
+    ollama_tag: "yi-coder:9b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 5.3 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 9.1 }
+    notes: 9B급 코딩. 긴 컨텍스트.
+
+  # ---------- IBM Granite ----------
+  - id: granite-3.3-8b-instruct
+    display: Granite 3.3 8B Instruct
+    family: ibm
+    kind: coder
+    params_b: 8.2
+    active_params_b: 8.2
+    context: 131072
+    max_context: 131072
+    tool_calling: native
+    vision: false
+    layers: 40
+    kv_heads: 8
+    head_dim: 128
+    license: apache-2.0
+    backends: [ollama, openai_compat]
+    ollama_tag: "granite3.3:8b"
+    quants:
+      - { name: q4_K_M, bpw: 4.9, weights_gb: 4.9 }
+      - { name: q8_0, bpw: 8.5, weights_gb: 8.7 }
+    notes: 기업용, 툴콜/RAG 튜닝. 완전 개방 라이선스.
+
+  # ---------- 대형(다GPU/원격) ----------
+  - id: deepseek-v3.1
+    display: DeepSeek-V3.1 (671B-A37B)
+    family: deepseek
+    kind: general
+    params_b: 671.0
+    active_params_b: 37.0
+    context: 131072
+    max_context: 131072
+    tool_calling: native
+    vision: false
+    layers: 61
+    kv_heads: 128
+    head_dim: 128
+    license: deepseek
+    backends: [openai_compat]
+    quants:
+      - { name: q4_K_M, bpw: 4.5, weights_gb: 377.0 }
+    notes: 로컬은 다GPU 서버 전용. 호스팅 API 권장.
+
+  - id: qwen3-coder-480b-a35b-instruct
+    display: Qwen3-Coder 480B-A35B Instruct
+    family: qwen
+    kind: coder
+    params_b: 480.0
+    active_params_b: 35.0
+    context: 262144
+    max_context: 1048576
+    tool_calling: native
+    vision: false
+    layers: 62
+    kv_heads: 8
+    head_dim: 128
+    license: apache-2.0
+    backends: [openai_compat]
+    quants:
+      - { name: q4_K_M, bpw: 4.5, weights_gb: 270.0 }
+    notes: 오픈 코딩모델 최상위권. 호스팅 API 또는 대형 서버.
+
+  - id: glm-4.6
+    display: GLM-4.6 (355B-A32B)
+    family: glm
+    kind: general
+    params_b: 355.0
+    active_params_b: 32.0
+    context: 204800
+    max_context: 204800
+    tool_calling: native
+    vision: false
+    layers: 92
+    kv_heads: 8
+    head_dim: 128
+    license: glm
+    backends: [openai_compat]
+    quants:
+      - { name: q4_K_M, bpw: 4.5, weights_gb: 200.0 }
+    notes: 에이전트/코딩 강함. 호스팅 API 권장.
+
+  - id: kimi-k2-instruct
+    display: Kimi K2 Instruct (1T-A32B)
+    family: moonshot
+    kind: general
+    params_b: 1000.0
+    active_params_b: 32.0
+    context: 131072
+    max_context: 131072
+    tool_calling: native
+    vision: false
+    layers: 61
+    kv_heads: 8
+    head_dim: 128
+    license: modified-mit
+    backends: [openai_compat]
+    quants:
+      - { name: q4_K_M, bpw: 4.5, weights_gb: 560.0 }
+    notes: 에이전트 툴사용 특화. 호스팅 API 전용에 가까움.
