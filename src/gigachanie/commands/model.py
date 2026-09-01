@@ -13,7 +13,7 @@ from rich.table import Table
 from gigachanie.config import Config, load_config, save_user_config, user_config_file
 from gigachanie.providers.hardware import detect_hardware
 from gigachanie.providers.recommend import Fit, recommend_models
-from gigachanie.providers.registry import default_registry
+from gigachanie.providers.registry import Registry, default_registry
 
 console = Console()
 app = typer.Typer(name="model", help="모델 목록 조회 / 선택 / 다운로드.", no_args_is_help=True)
@@ -102,7 +102,7 @@ def show() -> None:
 
 @app.command("use")
 def use(
-    model_id: str = typer.Argument(..., help="레지스트리의 모델 ID."),
+    model_id: str = typer.Argument("", help="레지스트리의 모델 ID (생략하면 대화형 선택)."),
     backend: str = typer.Option("", "--backend", "-b", help="ollama | openai_compat."),
     base_url: str = typer.Option("", "--base-url", help="openai_compat 백엔드 주소."),
     quant: str = typer.Option("", "--quant", "-q", help="양자화 이름 (예: q4_K_M)."),
@@ -121,13 +121,45 @@ def use(
     받지 않으려면 --no-pull.
     """
     reg = default_registry()
+
+    if not model_id:
+        model_id = _pick_model(reg) or ""
+        if not model_id:
+            console.print("[dim]선택이 취소되었습니다.[/dim]")
+            raise typer.Exit(code=1)
+
+    raise typer.Exit(
+        code=select_and_save(
+            model_id,
+            backend=backend,
+            base_url=base_url,
+            quant=quant,
+            context=context,
+            pull=pull,
+            no_pull=no_pull,
+        )
+    )
+
+
+def select_and_save(
+    model_id: str,
+    *,
+    backend: str = "",
+    base_url: str = "",
+    quant: str = "",
+    context: int = 0,
+    pull: bool = False,
+    no_pull: bool = False,
+) -> int:
+    """모델 선택을 사용자 설정에 저장하고 (필요 시) 가중치를 받는다. 종료코드 반환."""
+    reg = default_registry()
     m = reg.get(model_id)
     if m is None:
         near = [x.id for x in reg.models if model_id.lower() in x.id.lower()]
         hint = f" 비슷한 항목: {', '.join(near)}" if near else ""
         console.print(f"[red]'{model_id}' 를 레지스트리에서 찾을 수 없습니다.[/red]{hint}")
         console.print("[dim]`giga model list` 로 전체 목록을 확인하세요.[/dim]")
-        raise typer.Exit(code=1)
+        return 1
 
     chosen_backend = backend or ("ollama" if "ollama" in m.backends else "openai_compat")
     if chosen_backend not in m.backends:
@@ -135,7 +167,7 @@ def use(
             f"[red]{m.display} 는 '{chosen_backend}' 백엔드를 지원하지 않습니다.[/red] "
             f"지원: {', '.join(m.backends)}"
         )
-        raise typer.Exit(code=1)
+        return 1
 
     if quant and m.quant(quant) is None:
         console.print(
@@ -182,7 +214,7 @@ def use(
                 code = _ollama_pull(m.ollama_tag)
                 if code != 0:
                     if pull:
-                        raise typer.Exit(code=code)
+                        return code
                     console.print(
                         "[yellow]다운로드를 완료하지 못했습니다. "
                         "나중에 [cyan]giga model pull[/cyan] 로 재시도하세요.[/yellow]"
@@ -197,6 +229,27 @@ def use(
             "[yellow]![/yellow] openai_compat 백엔드는 --base-url 이 필요합니다 "
             "(예: http://localhost:8000/v1)."
         )
+    return 0
+
+
+def _pick_model(reg: Registry) -> str | None:
+    from gigachanie.commands._pick import pick
+
+    hw = detect_hardware()
+    fit = {r.model.id: r.fit for r in recommend_models(hw, include_unfittable=True)}
+    order = {"full": 0, "ok": 1, "tight": 2, "no": 3}
+    models = sorted(
+        reg.models,
+        key=lambda m: (order.get(fit.get(m.id, Fit.NO).value, 3), -m.params_b),
+    )
+    options = [
+        (
+            f"{m.display}  [{fit.get(m.id, Fit.NO).label}]  {m.family}/{m.kind}",
+            m.id,
+        )
+        for m in models
+    ]
+    return pick("사용할 모델 선택", options, text="이 장비 적합도 순 정렬 · Enter 선택")
 
 
 def _ollama_has(tag: str) -> bool:
