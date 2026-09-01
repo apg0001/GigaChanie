@@ -23,6 +23,7 @@ from gigachanie.commands import policy as policy_cmd
 from gigachanie.commands import ps as ps_cmd
 from gigachanie.commands import review as review_cmd
 from gigachanie.commands import route as route_cmd
+from gigachanie.commands import sessions as sessions_cmd
 from gigachanie.commands import setup as setup_cmd
 from gigachanie.commands import undo as undo_cmd
 
@@ -52,6 +53,7 @@ app.command("review")(review_cmd.review)
 app.add_typer(memory_cmd.app, name="memory")
 app.add_typer(mcp_cmd.app, name="mcp")
 app.add_typer(model_cmd.app, name="model")
+app.add_typer(sessions_cmd.app, name="sessions")
 
 
 def _version_callback(value: bool) -> None:

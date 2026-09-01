@@ -328,7 +328,7 @@
     <div class="meta">
       <span><b>버전</b> 0.0.1</span>
       <span><b>최종 업데이트</b> 2026-09-01</span>
-      <span><b>반영 범위</b> 이슈 #1–#18, #20, #24–#29 (부분 포함)</span>
+      <span><b>반영 범위</b> 이슈 #1–#18, #20, #21, #24–#29 (부분 포함)</span>
       <span><b>실행 명령</b> <code>giga</code></span>
     </div>
   </div>
@@ -563,12 +563,15 @@ python -m pip install -e ".[dev]"
       <div class="cmd">
         <div class="cmd__line"><span class="sig">giga chat</span> [-C DIR] [-w] [--web] [--mode M] [--max-steps N] [-t T] [--no-context]</div>
         <div class="cmd__body">
-          <p>옵션은 <code>giga agent</code>와 같습니다. 세션 중 슬래시 명령:</p>
+          <p>옵션은 <code>giga agent</code>와 같고, 추가로 <code>--continue</code>(최근 세션 이어가기)와
+        <code>--resume &lt;id&gt;</code>가 있습니다. 대화는 턴마다 <code>.agent/sessions/</code>에
+        자동 저장되며 <code>giga sessions list</code>로 확인합니다. 세션 중 슬래시 명령:</p>
           <table>
             <thead><tr><th>명령</th><th>동작</th></tr></thead>
             <tbody>
               <tr><td><code>/help</code></td><td>명령 목록</td></tr>
               <tr><td><code>/tools</code></td><td>현재 등록된 도구</td></tr>
+              <tr><td><code>--continue</code>, <code>-c</code> / <code>--resume &lt;id&gt;</code></td><td>(플래그) 최근 / 특정 세션 이어가기</td></tr>
               <tr><td><code>/model [ID]</code></td><td>현재 모델 표시 / 변경 (맥락 유지)</td></tr>
               <tr><td><code>/mode &lt;모드&gt;</code></td><td>승인 모드 변경</td></tr>
               <tr><td><code>/write on|off</code></td><td>쓰기·실행 도구 토글</td></tr>

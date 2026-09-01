@@ -32,6 +32,7 @@ from gigachanie.loop.tools import ToolContext
 from gigachanie.permissions import load_permissions
 from gigachanie.serving.base import Backend, BackendError, run_sync
 from gigachanie.serving.factory import build_backend
+from gigachanie.session import SessionData, SessionStore
 
 console = Console()
 
@@ -69,6 +70,7 @@ class ChatSession:
         use_context: bool = True,
         use_map: bool = True,
         web: bool = False,
+        resume: SessionData | None = None,
     ) -> None:
         self.backend = backend
         self.root = root
@@ -90,7 +92,24 @@ class ChatSession:
         self.checkpoints = CheckpointStore(root)
         self.procman = ProcessManager(root)
         self.perms = load_permissions(root)
+        self.sessions = SessionStore(root)
+        self.session = resume or SessionData(
+            id=SessionStore.new_id(), model_id=getattr(backend, "model", "")
+        )
         self.agent = self._new_agent()
+        if resume is not None and len(resume.messages) > 1:
+            # 시스템 프롬프트(새로 생성) + 이전 대화 이어붙이기
+            self.agent.messages = [self.agent.messages[0], *resume.messages[1:]]
+
+    def _persist(self) -> None:
+        self.session.messages = list(self.agent.messages)
+        if not self.session.title:
+            first = next(
+                (m.content for m in self.agent.messages if m.role == "user"), ""
+            )
+            self.session.title = first[:60]
+        self.session.model_id = getattr(self.backend, "model", self.session.model_id)
+        self.sessions.save(self.session)
 
     def _refresh_memory(self) -> None:
         idx = self.memory_store.index_text() if self.use_context else ""
@@ -149,7 +168,11 @@ class ChatSession:
             self._print_info()
         elif cmd == "/clear":
             self.rebuild(keep_history=False)
-            console.print("[dim]대화 맥락을 초기화했습니다.[/dim]")
+            self.session = SessionData(
+                id=SessionStore.new_id(),
+                model_id=getattr(self.backend, "model", ""),
+            )
+            console.print("[dim]대화 맥락을 초기화했습니다 (새 세션).[/dim]")
         elif cmd == "/model":
             self._cmd_model(args)
         elif cmd == "/mode":
@@ -182,7 +205,7 @@ class ChatSession:
             f"모델 [cyan]{self.backend.model}[/cyan] · 모드 [cyan]{self.mode.value}[/cyan] · "
             f"쓰기 [cyan]{'on' if self.writable else 'off'}[/cyan] · "
             f"스텝 {self.max_steps} · 턴 {turns} · 컨텍스트 {ctx_line} · 맵 {map_line} · "
-            f"루트 {self.root}"
+            f"세션 [cyan]{self.session.id}[/cyan] · 루트 {self.root}"
         )
 
     def _cmd_model(self, args: list[str]) -> None:
@@ -288,7 +311,9 @@ async def _run_turn(session: ChatSession, text: str) -> None:
         result = await session.agent.run(text, on_event=printer)
     except (KeyboardInterrupt, asyncio.CancelledError):
         console.print("\n[yellow]중단됨[/yellow]")
+        session._persist()
         return
+    session._persist()
     console.print()
     console.rule("[bold]답변[/bold]")
     console.print(result.final_text or "(빈 응답)", markup=False)
@@ -308,6 +333,8 @@ def chat(
         False, "--no-context", help="AGENTS.md 등 프로젝트 컨텍스트 파일을 읽지 않는다."
     ),
     no_map: bool = typer.Option(False, "--no-map", help="저장소 심볼 맵을 넣지 않는다."),
+    cont: bool = typer.Option(False, "--continue", "-c", help="가장 최근 세션을 이어간다."),
+    resume_id: str = typer.Option("", "--resume", help="특정 세션 ID 를 이어간다."),
 ) -> None:
     """대화형으로 에이전트와 작업한다."""
     root_path = root.resolve()
@@ -329,6 +356,18 @@ def chat(
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=1) from None
 
+    resume_data = None
+    if cont or resume_id:
+        store = SessionStore(root_path)
+        resume_data = store.load(resume_id) if resume_id else store.latest()
+        if resume_data is None:
+            console.print("[yellow]이어갈 세션을 찾지 못했습니다. 새 세션으로 시작합니다.[/yellow]")
+        else:
+            console.print(
+                f"[dim]세션 이어감: {resume_data.id} · {resume_data.turns}턴 · "
+                f"{resume_data.title}[/dim]"
+            )
+
     session = ChatSession(
         backend,
         root_path,
@@ -339,6 +378,7 @@ def chat(
         temperature=temperature,
         use_context=not no_context,
         use_map=not no_map,
+        resume=resume_data,
     )
 
     hist_path = user_config_path("gigachanie", appauthor=False, ensure_exists=True) / "chat_history"
