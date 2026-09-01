@@ -45,6 +45,7 @@ include = ["src/gigachanie/**/*.py", "src/gigachanie/**/*.yaml"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+extend-exclude = ["src/gigachanie/eval/tasks"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
@@ -61,6 +62,7 @@ asyncio_mode = "auto"
 python_version = "3.11"
 strict = true
 files = ["src/gigachanie"]
+exclude = ["src/gigachanie/eval/tasks/"]
 
 [[tool.mypy.overrides]]
 module = ["psutil"]

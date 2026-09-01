@@ -328,7 +328,7 @@
     <div class="meta">
       <span><b>버전</b> 0.0.1</span>
       <span><b>최종 업데이트</b> 2026-09-01</span>
-      <span><b>반영 범위</b> 이슈 #1–#12b, #20, #24, #26</span>
+      <span><b>반영 범위</b> 이슈 #1–#12b, #14, #20, #24, #26</span>
       <span><b>실행 명령</b> <code>giga</code></span>
     </div>
   </div>
@@ -349,6 +349,7 @@
       <li><a href="#init">giga init</a></li>
       <li><a href="#map">giga map</a></li>
       <li><a href="#memory">giga memory</a></li>
+      <li><a href="#eval">giga eval</a></li>
       <li><a href="#tools">도구</a></li>
       <li><a href="#approval">승인 모드</a></li>
       <li><a href="#models">모델 &amp; 백엔드</a></li>
@@ -628,6 +629,24 @@ giga --help</code></pre>
           </table>
           <p>회수는 토큰 겹침 점수 기반입니다(임베딩 미사용). 대화 중에는 <code>/remember &lt;내용&gt;</code>,
             <code>/memory</code>로도 다룰 수 있습니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="eval">
+      <h2>giga eval</h2>
+      <p class="section-note">태스크셋으로 에이전트 성능을 측정합니다. 각 태스크를 임시 디렉터리에
+        복제해 에이전트를 <code>full-auto</code>로 실행한 뒤, 판정(파일 내용/존재/셸 종료코드)으로
+        통과 여부를 봅니다. 모델·프롬프트를 바꿀 때 회귀를 잡는 용도입니다.</p>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga eval</span> [-T 태스크디렉터리] [-t 태스크이름 …] [--json]</div>
+        <div class="cmd__body">
+          <p>기본은 내장 태스크셋(<code>add-return-value</code>, <code>create-greet</code>,
+            <code>fix-failing-test</code>)입니다. 전부 통과해야 종료코드 0 — CI 게이트로 쓸 수 있습니다.</p>
+          <p>태스크 디렉터리 구조: <code>&lt;name&gt;/task.yaml</code>(prompt·max_steps·check) +
+            <code>&lt;name&gt;/repo/</code>(초기 파일 트리). 판정 유형:
+            <code>file_contains</code> · <code>file_present</code> · <code>file_absent</code> ·
+            <code>shell</code>(종료코드 0).</p>
         </div>
       </div>
     </section>

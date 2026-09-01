@@ -1,0 +1,6 @@
+prompt: >
+  calc.py 의 add 함수가 두 인자의 합을 반환하도록 고쳐줘.
+  지금은 pass 만 있어서 None 을 반환한다.
+max_steps: 12
+check:
+  - { type: file_contains, path: "calc.py", text: "return a + b" }
