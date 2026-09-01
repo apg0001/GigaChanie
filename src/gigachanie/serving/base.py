@@ -101,11 +101,18 @@ class BackendError(RuntimeError):
 
 @runtime_checkable
 class Backend(Protocol):
-    """에이전트 루프가 의존하는 유일한 인터페이스."""
+    """에이전트 루프가 의존하는 유일한 인터페이스.
+
+    model / tool_mode 는 읽기 전용으로 취급한다 (일반 속성 또는 property 모두 허용).
+    """
 
     name: str
-    model: str
-    tool_mode: Literal["native", "prompt", "none"]
+
+    @property
+    def model(self) -> str: ...
+
+    @property
+    def tool_mode(self) -> Literal["native", "prompt", "none"]: ...
 
     async def chat(
         self,

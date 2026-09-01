@@ -328,7 +328,7 @@
     <div class="meta">
       <span><b>버전</b> 0.0.1</span>
       <span><b>최종 업데이트</b> 2026-09-01</span>
-      <span><b>반영 범위</b> 이슈 #1–#14, #20, #24–#28 (#9·#12·#13 포함)</span>
+      <span><b>반영 범위</b> 이슈 #1–#16, #20, #24–#28 (부분 포함)</span>
       <span><b>실행 명령</b> <code>giga</code></span>
     </div>
   </div>
@@ -352,6 +352,7 @@
       <li><a href="#map">giga map</a></li>
       <li><a href="#memory">giga memory</a></li>
       <li><a href="#eval">giga eval</a></li>
+      <li><a href="#route">giga route</a></li>
       <li><a href="#tools">도구</a></li>
       <li><a href="#approval">승인 모드</a></li>
       <li><a href="#models">모델 &amp; 백엔드</a></li>
@@ -700,6 +701,29 @@ giga --help</code></pre>
             <code>&lt;name&gt;/repo/</code>(초기 파일 트리). 판정 유형:
             <code>file_contains</code> · <code>file_present</code> · <code>file_absent</code> ·
             <code>shell</code>(종료코드 0).</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="route">
+      <h2>giga route</h2>
+      <p class="section-note">여러 모델을 섞어 쓰는 첫 단계 — <b>라우터</b>. <code>orchestra.yaml</code>이 있으면
+        <code>agent</code>·<code>chat</code>이 첫 지시문을 분류(오타·간단편집·디버그·설계·리팩터·테스트)해
+        그 세션에 쓸 모델을 자동으로 고릅니다. <code>giga route</code>는 실제 호출 없이 그 결정만 보여줍니다.</p>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga route</span> ["작업 문장"] [-C DIR]</div>
+        <div class="cmd__body">
+          <pre><code><span class="c"># .agent/orchestra.yaml (또는 ~/.config/gigachanie/orchestra.yaml)</span>
+models:
+  fast:  { backend: ollama, model: "qwen2.5-coder-7b-instruct" }
+  heavy: { backend: ollama, model: "qwen2.5-coder-32b-instruct" }
+router:
+  rules:
+    simple_edit: fast
+    typo: fast
+    debug: heavy
+  default: heavy</code></pre>
+          <p>앙상블·작업 분할·초안-검수 파이프라인은 이후 단계(이슈 #17)입니다.</p>
         </div>
       </div>
     </section>

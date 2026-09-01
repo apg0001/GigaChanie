@@ -19,6 +19,7 @@
 
 - 대화형 선택 UI — `giga model use`(인자 없이 실행 시 화살표 선택), `giga doctor --use`(진단→선택→설정), 승인 프롬프트 3지선다([y]/[n]/[a]항상 허용→permissions.yaml 자동 기록). 비 TTY 는 번호 입력 폴백 (#27)
 - `ask_user` 도구 — 에이전트가 사용자만 결정할 수 있는 모호한 지점에서 추측 대신 선택지/자유입력을 요청. 비대화 세션은 "가정하고 진행" 안내 (#28)
+- 멀티 모델 라우터 — `.agent/orchestra.yaml` 로 모델 슬롯(fast/heavy 등)과 규칙을 정의하면 첫 지시문을 분류해 세션 모델을 자동 선택. `giga route "작업"` 으로 결정 미리보기 (#16)
 
 ### 변경
 - `agent`/`chat` 의 `--mode` 기본값이 `suggest` 고정 → permissions.yaml 의 `mode` 값 (없으면 suggest)
