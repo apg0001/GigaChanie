@@ -328,7 +328,7 @@
     <div class="meta">
       <span><b>버전</b> 0.0.1</span>
       <span><b>최종 업데이트</b> 2026-09-01</span>
-      <span><b>반영 범위</b> 이슈 #1–#12, #20, #24, #26</span>
+      <span><b>반영 범위</b> 이슈 #1–#12b, #20, #24, #26</span>
       <span><b>실행 명령</b> <code>giga</code></span>
     </div>
   </div>
@@ -528,6 +528,7 @@ giga --help</code></pre>
               <tr><td><code>--temperature</code>, <code>-t</code></td><td>샘플링 온도</td></tr>
               <tr><td><code>--no-context</code></td><td>AGENTS.md 등 프로젝트 컨텍스트를 읽지 않음</td></tr>
               <tr><td><code>--no-map</code></td><td>저장소 심볼 맵을 컨텍스트에 넣지 않음</td></tr>
+              <tr><td><code>--compact-at</code></td><td>이 토큰 수 초과 시 대화 자동 압축 (0 = 컨텍스트의 70%)</td></tr>
             </tbody>
           </table>
           <pre><code><span class="p">giga</span> agent -w --mode auto-edit "모든 함수에 타입 힌트를 추가해줘"
@@ -556,6 +557,7 @@ giga --help</code></pre>
               <tr><td><code>/web on|off</code></td><td>웹 도구 토글</td></tr>
               <tr><td><code>/remember &lt;내용&gt;</code></td><td>장기 메모리에 저장</td></tr>
               <tr><td><code>/memory</code></td><td>장기 메모리 목록</td></tr>
+              <tr><td><code>/compact</code></td><td>지금까지 대화를 요약해 압축</td></tr>
               <tr><td><code>/steps &lt;N&gt;</code></td><td>최대 스텝 변경</td></tr>
               <tr><td><code>/clear</code></td><td>대화 맥락 초기화 (설정 유지)</td></tr>
               <tr><td><code>/info</code></td><td>현재 세션 상태</td></tr>
@@ -756,6 +758,11 @@ giga --help</code></pre>
       <p><a href="#memory"><code>giga memory</code></a>로 저장한 항목의 <b>목차</b>가 매 세션 컨텍스트에 들어갑니다
         (본문 아님). 에이전트는 관련될 때 <code>read_memory</code>로 본문을 가져오고, <code>save_memory</code>로
         새 항목을 남깁니다. <code>--no-context</code>는 프로젝트 컨텍스트와 메모리 목차를 함께 끕니다.</p>
+
+      <h3>세션 대화 압축</h3>
+      <p>대화 토큰 추정치가 임계값(<code>--compact-at</code>, 기본은 모델 컨텍스트의 70%)을 넘으면
+        오래된 메시지를 요약 하나로 치환합니다. 시스템 프롬프트와 최근 메시지는 그대로 둡니다.
+        <code>chat</code>에서 <code>/compact</code>로 직접 실행할 수도 있습니다.</p>
 
       <h3>@파일 참조</h3>
       <p>입력에 <code>@경로</code>를 쓰면 해당 파일 내용이 프롬프트에 첨부됩니다.

@@ -12,6 +12,7 @@ import typer
 from rich.console import Console
 
 from gigachanie.commands._agentui import interactive_approver, make_event_printer
+from gigachanie.config import load_config
 from gigachanie.context import (
     MemoryStore,
     build_repo_map,
@@ -50,6 +51,9 @@ def agent(
     ),
     no_map: bool = typer.Option(
         False, "--no-map", help="저장소 심볼 맵을 컨텍스트에 넣지 않는다."
+    ),
+    compact_at: int = typer.Option(
+        0, "--compact-at", help="이 토큰 수 초과 시 대화 자동 압축 (0=컨텍스트의 70%)."
     ),
 ) -> None:
     """도구를 사용해 코드베이스를 조사하거나 수정한다."""
@@ -95,6 +99,7 @@ def agent(
         f"[dim]모델 {backend.model} · 도구 {', '.join(tools.names())} · "
         f"모드 {approval_mode.value}{' · yolo' if yolo else ''} · 루트 {ctx.root}{ctx_note}[/dim]"
     )
+    resolved_compact = compact_at or int((load_config().context or 32000) * 0.7)
     handler = make_event_printer()
     ag = Agent(
         backend,
@@ -105,6 +110,7 @@ def agent(
         memory_index=mem_index or None,
         max_steps=max_steps,
         temperature=temperature,
+        compact_at=resolved_compact,
     )
 
     async def _go() -> int:

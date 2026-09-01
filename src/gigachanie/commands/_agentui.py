@@ -47,6 +47,8 @@ def make_event_printer() -> Callable[[AgentEvent], None]:
             style = "red" if ev.is_error else "green"
             preview = ev.text if len(ev.text) <= 800 else ev.text[:800] + " …"
             console.print(f"[{style}]{preview}[/{style}]", markup=False, soft_wrap=True)
+        elif ev.kind == "compact":
+            console.print(f"[dim]↯ {ev.text}[/dim]")
         elif ev.kind == "error":
             console.print(f"[red]오류: {ev.text}[/red]")
 

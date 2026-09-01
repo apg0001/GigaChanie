@@ -11,6 +11,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Literal
 
+from gigachanie.loop.compact import compact, should_compact
 from gigachanie.loop.prompt import build_system_prompt
 from gigachanie.loop.tools import ToolContext, ToolError, ToolRegistry, ToolResult
 from gigachanie.serving.base import Backend, BackendError, Message, ToolCall, Usage
@@ -21,6 +22,7 @@ EventKind = Literal[
     "assistant_text",
     "tool_call",
     "tool_result",
+    "compact",
     "done",
     "error",
 ]
@@ -77,6 +79,7 @@ class Agent:
         max_tokens: int | None = None,
         history: Sequence[Message] | None = None,
         repeat_limit: int = 3,
+        compact_at: int | None = None,
     ) -> None:
         self.backend = backend
         self.tools = tools
@@ -90,6 +93,7 @@ class Agent:
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.repeat_limit = repeat_limit
+        self.compact_at = compact_at
         self.messages: list[Message] = [Message.system(self.system_prompt)]
         if history:
             self.messages.extend(history)
@@ -109,6 +113,9 @@ class Agent:
 
         for step in range(1, self.max_steps + 1):
             emit(AgentEvent(kind="step", step=step))
+
+            if should_compact(self.messages, self.compact_at):
+                await self._maybe_compact(emit)
 
             stream_target: list[str] = []
 
@@ -178,6 +185,32 @@ class Agent:
             messages=self.messages,
             usage=self._usage,
         )
+
+    # -------------------------------------------------------------- compaction
+
+    async def _maybe_compact(self, emit: EventHandler) -> None:
+        before = len(self.messages)
+        self.messages, did = await compact(self.backend, self.messages)
+        if did:
+            emit(
+                AgentEvent(
+                    kind="compact",
+                    text=f"대화 압축: {before} → {len(self.messages)} 메시지",
+                )
+            )
+
+    async def compact_now(self, on_event: EventHandler | None = None) -> bool:
+        emit = on_event or (lambda _e: None)
+        before = len(self.messages)
+        self.messages, did = await compact(self.backend, self.messages, keep_recent=4)
+        if did:
+            emit(
+                AgentEvent(
+                    kind="compact",
+                    text=f"대화 압축: {before} → {len(self.messages)} 메시지",
+                )
+            )
+        return did
 
     # ------------------------------------------------------------- tool calls
 
