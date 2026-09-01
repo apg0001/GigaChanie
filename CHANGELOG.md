@@ -22,6 +22,7 @@
 - 멀티 모델 라우터 — `.agent/orchestra.yaml` 로 모델 슬롯(fast/heavy 등)과 규칙을 정의하면 첫 지시문을 분류해 세션 모델을 자동 선택. `giga route "작업"` 으로 결정 미리보기 (#16)
 - Ollama 자동 설치 — `giga model use` 에서 Ollama 가 없으면 "설치할까요?" 확인 후 winget(Win)/brew(mac)/install.sh(Linux)로 설치하고 데몬을 기다림. `giga setup` 은 설치+모델 설정을 한 번에 안내 (#29)
 - 초안→검수 파이프라인 — `giga review`(git diff 를 검토 모델에게 리뷰), `giga agent --review`(작업 후 자동 리뷰)·`--review-fix`(지적 1회 반영). orchestra.yaml 의 `pipeline.review` 슬롯 사용 (#17)
+- MCP 클라이언트 — `.mcp.json`(Claude Code 호환)에 정의한 MCP 서버(stdio)의 도구를 `giga agent --mcp` 로 에이전트에 노출. `giga mcp list`(설정)·`giga mcp check`(연결·도구 확인). 외부 SDK 의존 없음 (#18)
 
 ### 변경
 - `agent`/`chat` 의 `--mode` 기본값이 `suggest` 고정 → permissions.yaml 의 `mode` 값 (없으면 suggest)
