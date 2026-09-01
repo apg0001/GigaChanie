@@ -12,7 +12,7 @@ import typer
 from rich.console import Console
 
 from gigachanie.commands._agentui import interactive_approver, make_event_printer
-from gigachanie.context import expand_file_refs, load_project_context
+from gigachanie.context import build_repo_map, expand_file_refs, load_project_context
 from gigachanie.loop.agent import Agent
 from gigachanie.loop.approval import ApprovalMode, ApprovalPolicy
 from gigachanie.loop.builtin_tools import build_registry
@@ -43,6 +43,9 @@ def agent(
     no_context: bool = typer.Option(
         False, "--no-context", help="AGENTS.md 등 프로젝트 컨텍스트 파일을 읽지 않는다."
     ),
+    no_map: bool = typer.Option(
+        False, "--no-map", help="저장소 심볼 맵을 컨텍스트에 넣지 않는다."
+    ),
 ) -> None:
     """도구를 사용해 코드베이스를 조사하거나 수정한다."""
     task_text = " ".join(task)
@@ -70,11 +73,14 @@ def agent(
         raise typer.Exit(code=1)
 
     pc = None if no_context else load_project_context(ctx.root, Path.cwd())
+    rm = None if no_map else build_repo_map(ctx.root, cwd=Path.cwd())
     task_text, refs = expand_file_refs(task_text, ctx.root)
 
     ctx_note = ""
     if pc and pc.found:
         ctx_note = f" · 컨텍스트 {', '.join(p.name for p in pc.sources)}"
+    if rm and rm.found:
+        ctx_note += f" · 맵 {len(rm.entries)}파일"
     if refs:
         ctx_note += f" · 첨부 {', '.join(refs)}"
     console.print(
@@ -87,6 +93,7 @@ def agent(
         tools,
         ctx,
         project_context=pc.text if pc else None,
+        repo_map=rm.text if rm else None,
         max_steps=max_steps,
         temperature=temperature,
     )

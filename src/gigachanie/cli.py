@@ -14,6 +14,7 @@ from gigachanie.commands import ask as ask_cmd
 from gigachanie.commands import chat as chat_cmd
 from gigachanie.commands import doctor as doctor_cmd
 from gigachanie.commands import init as init_cmd
+from gigachanie.commands import map as map_cmd
 from gigachanie.commands import model as model_cmd
 
 app = typer.Typer(
@@ -30,6 +31,7 @@ app.command("ping")(ask_cmd.ping)
 app.command("agent")(agent_cmd.agent)
 app.command("chat")(chat_cmd.chat)
 app.command("init")(init_cmd.init)
+app.command("map")(map_cmd.repo_map_cmd)
 app.add_typer(model_cmd.app, name="model")
 
 

@@ -2,5 +2,12 @@
 
 from gigachanie.context.project_file import ProjectContext, load_project_context
 from gigachanie.context.refs import expand_file_refs
+from gigachanie.context.repo_map import RepoMap, build_repo_map
 
-__all__ = ["ProjectContext", "load_project_context", "expand_file_refs"]
+__all__ = [
+    "ProjectContext",
+    "load_project_context",
+    "expand_file_refs",
+    "RepoMap",
+    "build_repo_map",
+]

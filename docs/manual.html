@@ -328,7 +328,7 @@
     <div class="meta">
       <span><b>버전</b> 0.0.1</span>
       <span><b>최종 업데이트</b> 2026-09-01</span>
-      <span><b>반영 범위</b> 이슈 #1–#20, #24</span>
+      <span><b>반영 범위</b> 이슈 #1–#11, #20, #24, #26</span>
       <span><b>실행 명령</b> <code>giga</code></span>
     </div>
   </div>
@@ -347,6 +347,7 @@
       <li><a href="#agent">giga agent</a></li>
       <li><a href="#chat">giga chat</a></li>
       <li><a href="#init">giga init</a></li>
+      <li><a href="#map">giga map</a></li>
       <li><a href="#tools">도구</a></li>
       <li><a href="#approval">승인 모드</a></li>
       <li><a href="#models">모델 &amp; 백엔드</a></li>
@@ -525,6 +526,7 @@ giga --help</code></pre>
               <tr><td><code>--max-steps</code></td><td>최대 반복 스텝 (기본 20)</td></tr>
               <tr><td><code>--temperature</code>, <code>-t</code></td><td>샘플링 온도</td></tr>
               <tr><td><code>--no-context</code></td><td>AGENTS.md 등 프로젝트 컨텍스트를 읽지 않음</td></tr>
+              <tr><td><code>--no-map</code></td><td>저장소 심볼 맵을 컨텍스트에 넣지 않음</td></tr>
             </tbody>
           </table>
           <pre><code><span class="p">giga</span> agent -w --mode auto-edit "모든 함수에 타입 힌트를 추가해줘"
@@ -577,6 +579,26 @@ giga --help</code></pre>
           </table>
           <p>감지 대상: <code>pyproject.toml</code>, <code>package.json</code>, <code>Cargo.toml</code>,
             <code>go.mod</code>, <code>Makefile</code>. 생성 후 반드시 내용을 검토하세요.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="map">
+      <h2>giga map</h2>
+      <p class="section-note">소스 파일에서 심볼(클래스·함수·상수)을 추출하고, 파일 간 참조 그래프에
+        PageRank 를 돌려 중요한 파일부터 개요를 만듭니다. 파이썬은 <code>ast</code>,
+        그 외 언어는 정규식으로 처리합니다(tree-sitter 미사용). <code>agent</code>·<code>chat</code>은
+        이 맵을 시스템 프롬프트에 자동으로 넣습니다.</p>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga map</span> [-C DIR] [--budget N] [--files N] [--json]</div>
+        <div class="cmd__body">
+          <table>
+            <tbody>
+              <tr><td><code>--budget</code></td><td>맵 텍스트 문자 예산 (기본 8000)</td></tr>
+              <tr><td><code>--files</code></td><td>스캔할 최대 파일 수 (기본 400)</td></tr>
+              <tr><td><code>--json</code></td><td>파일별 심볼을 JSON 으로 출력</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -695,6 +717,11 @@ giga --help</code></pre>
       </ul>
       <p>계층 병합: 전역(<code>~/.config/gigachanie/AGENTS.md</code>) → 프로젝트 루트 → 작업 하위 디렉터리
         순서로 합쳐집니다 (총 12KB 상한). <code>--no-context</code>로 끌 수 있습니다.</p>
+
+      <h3>저장소 심볼 맵</h3>
+      <p><code>agent</code>·<code>chat</code>은 시작 시 <a href="#map"><code>giga map</code></a>과 같은 맵을 만들어
+        시스템 프롬프트에 넣습니다. 에이전트가 매번 파일을 더듬지 않고 어디에 무엇이 있는지 알고 시작합니다.
+        <code>--no-map</code>으로 끕니다.</p>
 
       <h3>@파일 참조</h3>
       <p>입력에 <code>@경로</code>를 쓰면 해당 파일 내용이 프롬프트에 첨부됩니다.

@@ -31,10 +31,13 @@ DEFAULT_SYSTEM_PROMPT = """\
 def build_system_prompt(
     extra: str | None = None,
     project_context: str | None = None,
+    repo_map: str | None = None,
 ) -> str:
     parts = [DEFAULT_SYSTEM_PROMPT]
     if project_context:
         parts.append("프로젝트 컨텍스트:\n" + project_context.strip())
+    if repo_map:
+        parts.append(repo_map.strip())
     if extra:
         parts.append(extra.strip())
     return "\n\n".join(parts)

@@ -16,7 +16,7 @@ from rich.console import Console
 
 from gigachanie.commands._agentui import interactive_approver, make_event_printer
 from gigachanie.config import load_config
-from gigachanie.context import expand_file_refs, load_project_context
+from gigachanie.context import build_repo_map, expand_file_refs, load_project_context
 from gigachanie.loop.agent import Agent
 from gigachanie.loop.approval import ApprovalMode, ApprovalPolicy
 from gigachanie.loop.builtin_tools import build_registry
@@ -53,6 +53,7 @@ class ChatSession:
         max_steps: int,
         temperature: float,
         use_context: bool = True,
+        use_map: bool = True,
         web: bool = False,
     ) -> None:
         self.backend = backend
@@ -66,6 +67,9 @@ class ChatSession:
         pc = load_project_context(root, root) if use_context else None
         self.project_context = pc.text if pc and pc.found else None
         self.context_sources = [p.name for p in pc.sources] if pc else []
+        rm = build_repo_map(root, cwd=root) if use_map else None
+        self.repo_map = rm.text if rm and rm.found else None
+        self.map_files = len(rm.entries) if rm else 0
         self.agent = self._new_agent()
 
     def _new_agent(self) -> Agent:
@@ -77,6 +81,7 @@ class ChatSession:
             tools,
             ctx,
             project_context=self.project_context,
+            repo_map=self.repo_map,
             max_steps=self.max_steps,
             temperature=self.temperature,
         )
@@ -123,10 +128,12 @@ class ChatSession:
     def _print_info(self) -> None:
         turns = sum(1 for m in self.agent.messages if m.role == "user")
         ctx_line = ", ".join(self.context_sources) if self.context_sources else "없음"
+        map_line = f"{self.map_files}파일" if self.repo_map else "off"
         console.print(
             f"모델 [cyan]{self.backend.model}[/cyan] · 모드 [cyan]{self.mode.value}[/cyan] · "
             f"쓰기 [cyan]{'on' if self.writable else 'off'}[/cyan] · "
-            f"스텝 {self.max_steps} · 턴 {turns} · 컨텍스트 {ctx_line} · 루트 {self.root}"
+            f"스텝 {self.max_steps} · 턴 {turns} · 컨텍스트 {ctx_line} · 맵 {map_line} · "
+            f"루트 {self.root}"
         )
 
     def _cmd_model(self, args: list[str]) -> None:
@@ -209,6 +216,7 @@ def chat(
     no_context: bool = typer.Option(
         False, "--no-context", help="AGENTS.md 등 프로젝트 컨텍스트 파일을 읽지 않는다."
     ),
+    no_map: bool = typer.Option(False, "--no-map", help="저장소 심볼 맵을 넣지 않는다."),
 ) -> None:
     """대화형으로 에이전트와 작업한다."""
     try:
@@ -237,6 +245,7 @@ def chat(
         max_steps=max_steps,
         temperature=temperature,
         use_context=not no_context,
+        use_map=not no_map,
     )
 
     hist_path = user_config_path("gigachanie", appauthor=False, ensure_exists=True) / "chat_history"
