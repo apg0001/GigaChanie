@@ -328,7 +328,7 @@
     <div class="meta">
       <span><b>버전</b> 0.0.1</span>
       <span><b>최종 업데이트</b> 2026-09-01</span>
-      <span><b>반영 범위</b> 이슈 #1–#14, #20, #24, #25, #26, #27 (#9·#12·#13 포함)</span>
+      <span><b>반영 범위</b> 이슈 #1–#14, #20, #24–#28 (#9·#12·#13 포함)</span>
       <span><b>실행 명령</b> <code>giga</code></span>
     </div>
   </div>
@@ -385,6 +385,10 @@
         <div class="card">
           <h4>AGENTS.md</h4>
           <p>프로젝트 규칙을 매 세션 자동으로 읽습니다. <code>giga init</code>이 초안을 만듭니다.</p>
+        </div>
+        <div class="card">
+          <h4>ask_user</h4>
+          <p>사용자만 결정할 수 있는 모호한 지점에서 추측 대신 선택지나 자유 입력을 요청합니다.</p>
         </div>
       </div>
     </section>
@@ -713,6 +717,7 @@ giga --help</code></pre>
           <tr><td><code>glob</code></td><td>패턴으로 파일 찾기 (<code>**/*.py</code>)</td></tr>
           <tr><td><code>grep</code></td><td>정규식으로 내용 검색, glob으로 대상 좁히기</td></tr>
           <tr><td><code>read_memory</code></td><td>장기 메모리 본문 조회 (slug 또는 query)</td></tr>
+          <tr><td><code>ask_user</code></td><td>모호한 지점에서 사용자에게 선택지/자유입력을 요청</td></tr>
         </tbody>
       </table>
 

@@ -141,6 +141,30 @@ async def _grep(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     return ToolResult(content=body)
 
 
+_NO_USER_HINT = (
+    "지금은 대화형 세션이 아니어서 사용자에게 물을 수 없습니다. "
+    "가장 합리적인 가정을 선택해 진행하되, 되돌리기 어려운 작업은 피하고 "
+    "최종 답변에서 어떤 가정을 했는지 밝히세요."
+)
+
+
+async def _ask_user(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
+    question = args.get("question")
+    if not question or not isinstance(question, str):
+        raise ToolError("question 인자(문자열)가 필요합니다.")
+    raw_options = args.get("options") or []
+    options = [str(o) for o in raw_options] if isinstance(raw_options, list) else []
+    allow_custom = bool(args.get("allow_custom", True))
+
+    if ctx.ask_user is None:
+        return ToolResult(content=_NO_USER_HINT)
+
+    answer = ctx.ask_user(question, options, allow_custom)
+    if not answer.strip():
+        return ToolResult(content="(사용자가 답하지 않았습니다. 합리적으로 가정하고 진행하세요.)")
+    return ToolResult(content=f"사용자 답변: {answer.strip()}")
+
+
 def register_readonly_tools(reg: ToolRegistry) -> None:
     reg.register_func(
         "list_dir",
@@ -189,6 +213,29 @@ def register_readonly_tools(reg: ToolRegistry) -> None:
             "required": ["pattern"],
         },
         _grep,
+    )
+    reg.register_func(
+        "ask_user",
+        "사용자만 결정할 수 있는 모호한 지점(방향·우선순위·되돌리기 어려운 선택)에서 "
+        "추측 대신 사용자에게 묻는다. options 로 선택지를 주면 사용자가 고르거나 직접 입력한다. "
+        "코드/문서로 확인 가능한 것은 먼저 도구로 조사하고, 남발하지 않는다.",
+        {
+            "type": "object",
+            "properties": {
+                "question": {"type": "string"},
+                "options": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "선택지 (선택). 없으면 자유 입력만 받는다.",
+                },
+                "allow_custom": {
+                    "type": "boolean",
+                    "description": "선택지 외 자유 입력 허용. 기본 true",
+                },
+            },
+            "required": ["question"],
+        },
+        _ask_user,
     )
 
 

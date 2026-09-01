@@ -18,6 +18,7 @@
 - 권한 규칙 — `permissions.yaml`(사용자 < 프로젝트) 로 승인 모드·셸 정규식·편집 경로 glob 설정. 기본 보호 경로(.env, *.pem, .ssh 등) 편집 차단 + 민감 파일 읽기 경고. `giga policy` (#9)
 
 - 대화형 선택 UI — `giga model use`(인자 없이 실행 시 화살표 선택), `giga doctor --use`(진단→선택→설정), 승인 프롬프트 3지선다([y]/[n]/[a]항상 허용→permissions.yaml 자동 기록). 비 TTY 는 번호 입력 폴백 (#27)
+- `ask_user` 도구 — 에이전트가 사용자만 결정할 수 있는 모호한 지점에서 추측 대신 선택지/자유입력을 요청. 비대화 세션은 "가정하고 진행" 안내 (#28)
 
 ### 변경
 - `agent`/`chat` 의 `--mode` 기본값이 `suggest` 고정 → permissions.yaml 의 `mode` 값 (없으면 suggest)

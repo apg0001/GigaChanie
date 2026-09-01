@@ -15,7 +15,7 @@ from prompt_toolkit.history import FileHistory
 from rich.console import Console
 from rich.markup import escape
 
-from gigachanie.commands._agentui import make_approver, make_event_printer
+from gigachanie.commands._agentui import ask_user, make_approver, make_event_printer
 from gigachanie.config import load_config
 from gigachanie.context import (
     MemoryStore,
@@ -111,6 +111,7 @@ class ChatSession:
             policy=policy,
             checkpoints=self.checkpoints if self.writable else None,
             procman=self.procman if self.writable else None,
+            ask_user=ask_user,
         )
         return Agent(
             self.backend,
