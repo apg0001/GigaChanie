@@ -25,6 +25,8 @@
 - MCP 클라이언트 — `.mcp.json`(Claude Code 호환)에 정의한 MCP 서버(stdio)의 도구를 `giga agent --mcp` 로 에이전트에 노출. `giga mcp list`(설정)·`giga mcp check`(연결·도구 확인). 외부 SDK 의존 없음 (#18)
 - 대화 세션 저장/재개 — `giga chat` 이 턴마다 `.agent/sessions/` 에 저장. `giga chat --continue`(최근 이어가기) / `--resume <id>`, `giga sessions list/rm` (#21)
 - git 도우미 — `giga commit`(AGENTS.md/CONTRIBUTING.md 의 git 규칙을 반영해 모델이 커밋 메시지 생성, `-a`/`-m`/`--push`), `giga pr`(커밋 범위로 PR 제목/본문 초안, `gh` 있으면 `--create`) (#22)
+- 커스텀 슬래시 명령 — `.agent/commands/<이름>.md` 를 `chat` 에서 `/이름 인자` 로 실행 (`$ARGUMENTS`·`{{args}}`·`$1..` 치환). `/commands` 로 목록 (#19)
+- 훅 — `.agent/hooks.yaml` 로 `pre_tool`(종료코드≠0 이면 도구 차단)·`post_tool`·`session_start`·`stop` 에서 셸 명령 실행 (#19)
 
 ### 변경
 - `agent`/`chat` 의 `--mode` 기본값이 `suggest` 고정 → permissions.yaml 의 `mode` 값 (없으면 suggest)

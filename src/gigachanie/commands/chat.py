@@ -16,6 +16,7 @@ from rich.console import Console
 from rich.markup import escape
 
 from gigachanie.commands._agentui import ask_user, make_approver, make_event_printer
+from gigachanie.commands._slashfiles import load_custom_commands
 from gigachanie.config import load_config
 from gigachanie.context import (
     MemoryStore,
@@ -27,6 +28,7 @@ from gigachanie.loop.agent import Agent
 from gigachanie.loop.approval import ApprovalMode, build_policy
 from gigachanie.loop.builtin_tools import build_registry
 from gigachanie.loop.checkpoint import CheckpointStore
+from gigachanie.loop.hooks import HookRunner
 from gigachanie.loop.procman import ProcessManager
 from gigachanie.loop.tools import ToolContext
 from gigachanie.permissions import load_permissions
@@ -49,6 +51,7 @@ _HELP = """\
   /compact           지금까지 대화를 요약해 압축
   /undo              마지막 편집 턴을 되돌림
   /ps                실행 중인 백그라운드 프로세스 목록
+  /commands          .agent/commands/*.md 커스텀 명령 목록
   /clear             대화 맥락 초기화 (모델·설정 유지)
   /steps <N>         최대 스텝 변경
   /info              현재 세션 상태
@@ -92,6 +95,8 @@ class ChatSession:
         self.checkpoints = CheckpointStore(root)
         self.procman = ProcessManager(root)
         self.perms = load_permissions(root)
+        self.hooks = HookRunner.load(root)
+        self.custom_commands = load_custom_commands(root)
         self.sessions = SessionStore(root)
         self.session = resume or SessionData(
             id=SessionStore.new_id(), model_id=getattr(backend, "model", "")
@@ -131,6 +136,7 @@ class ChatSession:
             checkpoints=self.checkpoints if self.writable else None,
             procman=self.procman if self.writable else None,
             ask_user=ask_user,
+            hooks=self.hooks if self.hooks.enabled else None,
         )
         return Agent(
             self.backend,
@@ -191,6 +197,8 @@ class ChatSession:
             self._cmd_undo()
         elif cmd == "/ps":
             self._cmd_ps()
+        elif cmd == "/commands":
+            self._cmd_commands()
         elif cmd == "/steps":
             self._cmd_steps(args)
         else:
@@ -274,6 +282,15 @@ class ChatSession:
         did = run_sync(self.agent.compact_now(make_event_printer()))
         if not did:
             console.print("[dim]압축할 만큼 대화가 길지 않습니다.[/dim]")
+
+    def _cmd_commands(self) -> None:
+        if not self.custom_commands:
+            console.print(
+                "[dim]커스텀 명령이 없습니다. .agent/commands/<이름>.md 를 만드세요.[/dim]"
+            )
+            return
+        for c in self.custom_commands.values():
+            console.print(f"[bold]/{c.name}[/bold]  {escape(c.description)}")
 
     def _cmd_ps(self) -> None:
         procs = self.procman.list()
@@ -385,7 +402,13 @@ def chat(
     pt: PromptSession[str] = PromptSession(history=FileHistory(str(hist_path)))
 
     console.print("[bold]GigaChanie chat[/bold] · /help 로 명령 확인, /exit 로 종료")
+    if session.custom_commands:
+        console.print(
+            f"[dim]커스텀 명령: {', '.join('/' + n for n in session.custom_commands)}[/dim]"
+        )
     session._print_info()
+    if session.hooks.enabled:
+        session.hooks.fire("session_start")
 
     async def _loop() -> None:
         try:
@@ -398,11 +421,20 @@ def chat(
                 if not line:
                     continue
                 if line.startswith("/"):
+                    name = line[1:].split()[0] if len(line) > 1 else ""
+                    if name in session.custom_commands:
+                        args = line[1 + len(name) :].strip()
+                        await _run_turn(
+                            session, session.custom_commands[name].expand(args)
+                        )
+                        continue
                     if not session.handle_slash(line):
                         break
                     continue
                 await _run_turn(session, line)
         finally:
+            if session.hooks.enabled:
+                session.hooks.fire("stop")
             await session.backend.close()
             leftover = session.procman.list()
             if leftover:

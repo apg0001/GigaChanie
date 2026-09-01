@@ -24,6 +24,7 @@ from gigachanie.loop.agent import Agent
 from gigachanie.loop.approval import ApprovalMode, build_policy
 from gigachanie.loop.builtin_tools import build_registry
 from gigachanie.loop.checkpoint import CheckpointStore
+from gigachanie.loop.hooks import HookRunner
 from gigachanie.loop.procman import ProcessManager
 from gigachanie.loop.tools import ToolContext
 from gigachanie.permissions import load_permissions
@@ -159,12 +160,14 @@ def agent(
         else None
     )
     procman = ProcessManager(root.resolve()) if writable else None
+    hook_runner = HookRunner.load(root.resolve())
     ctx = ToolContext(
         root=root.resolve(),
         policy=policy,
         checkpoints=checkpoints,
         procman=procman,
         ask_user=ask_user if _is_tty() else None,
+        hooks=hook_runner if hook_runner.enabled else None,
     )
     if not ctx.root.is_dir():
         console.print(f"[red]디렉터리가 아닙니다: {root}[/red]")
@@ -223,11 +226,15 @@ def agent(
             else:
                 console.print("[dim]MCP: .mcp.json 설정 없음[/dim]")
 
+        if hook_runner.enabled:
+            hook_runner.fire("session_start")
         try:
             result = await ag.run(task_text, on_event=handler)
             if (do_review or review_fix) and writable:
                 await _pipeline_review(ag, ctx.root, task_text, apply_fix=review_fix)
         finally:
+            if hook_runner.enabled:
+                hook_runner.fire("stop")
             if mcp_manager is not None:
                 await mcp_manager.stop()
             await backend.close()

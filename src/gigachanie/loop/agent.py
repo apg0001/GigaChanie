@@ -260,10 +260,18 @@ class Agent:
             return ToolResult.error(
                 f"알 수 없는 도구 '{call.name}'. 사용 가능: {', '.join(self.tools.names())}"
             )
+        hooks = self.ctx.hooks
+        if hooks is not None:
+            blocked = hooks.check_pre_tool(call.name, call.arguments)
+            if blocked:
+                return ToolResult.error(blocked)
         try:
-            return await tool.run(call.arguments, self.ctx)
+            result = await tool.run(call.arguments, self.ctx)
         except ToolError as exc:
-            return ToolResult.error(str(exc))
+            result = ToolResult.error(str(exc))
         except Exception as exc:
             # 도구 내부 오류는 루프를 죽이지 않고 모델에 피드백한다.
-            return ToolResult.error(f"{type(exc).__name__}: {exc}")
+            result = ToolResult.error(f"{type(exc).__name__}: {exc}")
+        if hooks is not None:
+            hooks.fire("post_tool", tool=call.name, args=call.arguments)
+        return result
