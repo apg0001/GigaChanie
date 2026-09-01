@@ -14,6 +14,7 @@ from gigachanie.commands import ask as ask_cmd
 from gigachanie.commands import chat as chat_cmd
 from gigachanie.commands import doctor as doctor_cmd
 from gigachanie.commands import eval as eval_cmd
+from gigachanie.commands import git as git_cmd
 from gigachanie.commands import init as init_cmd
 from gigachanie.commands import map as map_cmd
 from gigachanie.commands import mcp as mcp_cmd
@@ -50,6 +51,8 @@ app.command("kill")(ps_cmd.kill)
 app.command("policy")(policy_cmd.policy)
 app.command("route")(route_cmd.route)
 app.command("review")(review_cmd.review)
+app.command("commit")(git_cmd.commit)
+app.command("pr")(git_cmd.pr)
 app.add_typer(memory_cmd.app, name="memory")
 app.add_typer(mcp_cmd.app, name="mcp")
 app.add_typer(model_cmd.app, name="model")

@@ -328,7 +328,7 @@
     <div class="meta">
       <span><b>버전</b> 0.0.1</span>
       <span><b>최종 업데이트</b> 2026-09-01</span>
-      <span><b>반영 범위</b> 이슈 #1–#18, #20, #21, #24–#29 (부분 포함)</span>
+      <span><b>반영 범위</b> 이슈 #1–#18, #20–#22, #24–#29 (부분 포함)</span>
       <span><b>실행 명령</b> <code>giga</code></span>
     </div>
   </div>
@@ -355,6 +355,7 @@
       <li><a href="#eval">giga eval</a></li>
       <li><a href="#route">giga route</a></li>
       <li><a href="#review">giga review</a></li>
+      <li><a href="#git">giga commit · pr</a></li>
       <li><a href="#tools">도구</a></li>
       <li><a href="#approval">승인 모드</a></li>
       <li><a href="#models">모델 &amp; 백엔드</a></li>
@@ -786,6 +787,32 @@ models:
   reviewer: { backend: ollama, model: "qwen2.5-coder-32b-instruct" }
 pipeline:
   review: reviewer</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="git">
+      <h2>giga commit · giga pr</h2>
+      <p class="section-note">프로젝트의 git 규칙(<code>AGENTS.md</code>/<code>CONTRIBUTING.md</code>에서 추출)과
+        최근 커밋 스타일을 반영해 모델이 커밋 메시지·PR 초안을 만듭니다.</p>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga commit</span> [-C DIR] [-a] [-m "메시지"] [--push] [-y]</div>
+        <div class="cmd__body">
+          <table>
+            <tbody>
+              <tr><td><code>-a</code></td><td>추적 파일 변경을 모두 스테이지</td></tr>
+              <tr><td><code>-m</code></td><td>직접 메시지 지정 (모델 미사용)</td></tr>
+              <tr><td><code>--push</code></td><td>커밋 후 현재 브랜치 푸시</td></tr>
+              <tr><td><code>-y</code></td><td>확인 없이 커밋</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga pr</span> [-C DIR] [--base main] [--create]</div>
+        <div class="cmd__body">
+          <p><code>base..HEAD</code> 커밋으로 PR 제목/본문 초안을 만듭니다.
+            <code>gh</code>가 있고 <code>--create</code>면 실제 PR 을, 없으면 compare URL 을 안내합니다.</p>
         </div>
       </div>
     </section>
