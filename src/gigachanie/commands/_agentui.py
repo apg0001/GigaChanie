@@ -76,6 +76,25 @@ def interactive_approver(req: ApprovalRequest) -> bool:
     return make_approver(Path.cwd())(req)
 
 
+def ask_user(question: str, options: list[str], allow_custom: bool) -> str:
+    """에이전트가 ask_user 도구를 호출했을 때 사용자에게 묻는다."""
+    console.print()
+    console.print(f"[bold cyan]에이전트가 묻습니다:[/bold cyan] {question}")
+    for i, opt in enumerate(options, start=1):
+        console.print(f"  [cyan]{i}[/cyan]. {opt}")
+    if allow_custom:
+        console.print("  [dim]또는 자유롭게 입력하세요.[/dim]")
+
+    hint = "번호 또는 직접 입력" if options else "답변"
+    try:
+        raw = str(typer.prompt(hint, default="", show_default=False)).strip()
+    except (EOFError, KeyboardInterrupt):
+        return ""
+    if options and raw.isdigit() and 1 <= int(raw) <= len(options):
+        return options[int(raw) - 1]
+    return raw
+
+
 def make_event_printer() -> Callable[[AgentEvent], None]:
     state = {"streaming": False}
 

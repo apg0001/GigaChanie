@@ -14,8 +14,11 @@ from rich.console import Console
 console = Console()
 
 
-def _is_tty() -> bool:
+def is_tty() -> bool:
     return sys.stdin.isatty() and sys.stdout.isatty()
+
+
+_is_tty = is_tty
 
 
 def pick(

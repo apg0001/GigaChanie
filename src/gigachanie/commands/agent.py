@@ -11,7 +11,8 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from gigachanie.commands._agentui import make_approver, make_event_printer
+from gigachanie.commands._agentui import ask_user, make_approver, make_event_printer
+from gigachanie.commands._pick import is_tty as _is_tty
 from gigachanie.config import load_config
 from gigachanie.context import (
     MemoryStore,
@@ -100,6 +101,7 @@ def agent(
         policy=policy,
         checkpoints=checkpoints,
         procman=procman,
+        ask_user=ask_user if _is_tty() else None,
     )
     if not ctx.root.is_dir():
         console.print(f"[red]디렉터리가 아닙니다: {root}[/red]")
