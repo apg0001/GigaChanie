@@ -195,6 +195,8 @@ def select_and_save(
     console.print(f"[green]선택됨:[/green] {m.display}  ([cyan]{chosen_backend}[/cyan])")
     console.print(f"[dim]저장: {path}[/dim]")
     if chosen_backend == "ollama" and m.ollama_tag:
+        if not no_pull and not _ensure_ollama_for_pull():
+            return 0
         if _ollama_has(m.ollama_tag):
             console.print(f"[green]✓[/green] ollama 에 '{m.ollama_tag}' 이미 있음")
         else:
@@ -250,6 +252,34 @@ def _pick_model(reg: Registry) -> str | None:
         for m in models
     ]
     return pick("사용할 모델 선택", options, text="이 장비 적합도 순 정렬 · Enter 선택")
+
+
+def _ensure_ollama_for_pull() -> bool:
+    """ollama 가 없으면 설치할지 물어보고 설치한다. 준비되면 True."""
+    from gigachanie.serving import ollama_setup
+
+    if ollama_setup.is_installed():
+        return True
+
+    tty = sys.stdin.isatty() and sys.stdout.isatty()
+    if not tty:
+        console.print(
+            "[yellow]![/yellow] Ollama 미설치. 대화형으로 `giga model use` 를 실행하면 "
+            "설치를 안내합니다. 또는 [cyan]giga setup[/cyan] / https://ollama.com"
+        )
+        return False
+
+    if not typer.confirm(
+        "Ollama 가 설치돼 있지 않습니다. 지금 설치할까요?", default=True
+    ):
+        console.print("[dim]나중에: [cyan]giga setup[/cyan] 또는 https://ollama.com[/dim]")
+        return False
+
+    console.print("[cyan]Ollama 설치 중…[/cyan]")
+    ready, msg = ollama_setup.ensure_ready(auto=False, ask=True)
+    style = "green" if ready else "yellow"
+    console.print(f"[{style}]{msg}[/{style}]")
+    return ready
 
 
 def _ollama_has(tag: str) -> bool:

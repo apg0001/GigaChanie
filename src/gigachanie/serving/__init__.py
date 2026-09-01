@@ -3,6 +3,7 @@
 오픈모델을 OpenAI 호환 인터페이스로 감싼다. 에이전트 루프는 `Backend` 프로토콜만 의존한다.
 """
 
+from gigachanie.serving import ollama_setup
 from gigachanie.serving.base import (
     Backend,
     ChatResponse,
@@ -21,4 +22,5 @@ __all__ = [
     "ToolSpec",
     "Usage",
     "build_backend",
+    "ollama_setup",
 ]

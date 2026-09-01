@@ -54,8 +54,10 @@ def test_model_use_no_pull_은_설정만_저장(tmp_path, monkeypatch) -> None:
 def test_model_use_비대화_자동pull_시도(tmp_path, monkeypatch) -> None:
     import gigachanie.commands.model as modmod
     import gigachanie.config as cfgmod
+    from gigachanie.serving import ollama_setup
 
     monkeypatch.setattr(cfgmod, "_USER_CONFIG", tmp_path / "config.yaml")
+    monkeypatch.setattr(ollama_setup, "is_installed", lambda: True)  # ollama 설치됐다고 가정
     called: list[str] = []
     monkeypatch.setattr(modmod, "_ollama_has", lambda _tag: False)
     monkeypatch.setattr(modmod, "_ollama_pull", lambda tag: called.append(tag) or 0)

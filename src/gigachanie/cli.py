@@ -21,6 +21,7 @@ from gigachanie.commands import model as model_cmd
 from gigachanie.commands import policy as policy_cmd
 from gigachanie.commands import ps as ps_cmd
 from gigachanie.commands import route as route_cmd
+from gigachanie.commands import setup as setup_cmd
 from gigachanie.commands import undo as undo_cmd
 
 app = typer.Typer(
@@ -31,6 +32,7 @@ app = typer.Typer(
 )
 console = Console()
 
+app.command("setup")(setup_cmd.setup)
 app.command("doctor")(doctor_cmd.doctor)
 app.command("ask")(ask_cmd.ask)
 app.command("ping")(ask_cmd.ping)
