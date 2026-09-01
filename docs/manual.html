@@ -328,7 +328,7 @@
     <div class="meta">
       <span><b>버전</b> 0.0.1</span>
       <span><b>최종 업데이트</b> 2026-09-01</span>
-      <span><b>반영 범위</b> 이슈 #1–#17, #20, #24–#29 (부분 포함)</span>
+      <span><b>반영 범위</b> 이슈 #1–#18, #20, #24–#29 (부분 포함)</span>
       <span><b>실행 명령</b> <code>giga</code></span>
     </div>
   </div>
@@ -351,6 +351,7 @@
       <li><a href="#ps">giga ps · kill</a></li>
       <li><a href="#map">giga map</a></li>
       <li><a href="#memory">giga memory</a></li>
+      <li><a href="#mcp">giga mcp</a></li>
       <li><a href="#eval">giga eval</a></li>
       <li><a href="#route">giga route</a></li>
       <li><a href="#review">giga review</a></li>
@@ -545,6 +546,7 @@ python -m pip install -e ".[dev]"
               <tr><td><code>--compact-at</code></td><td>이 토큰 수 초과 시 대화 자동 압축 (0 = 컨텍스트의 70%)</td></tr>
               <tr><td><code>--no-checkpoint</code></td><td>편집 스냅샷을 남기지 않음 (<code>giga undo</code> 불가)</td></tr>
               <tr><td><code>--review</code> / <code>--review-fix</code></td><td>작업 후 변경을 검토 모델에게 리뷰 / 지적 1회 반영</td></tr>
+              <tr><td><code>--mcp</code></td><td>.mcp.json 의 MCP 서버 도구 활성화</td></tr>
             </tbody>
           </table>
           <pre><code><span class="p">giga</span> agent -w --mode auto-edit "모든 함수에 타입 힌트를 추가해줘"
@@ -688,6 +690,36 @@ python -m pip install -e ".[dev]"
           </table>
           <p>회수는 토큰 겹침 점수 기반입니다(임베딩 미사용). 대화 중에는 <code>/remember &lt;내용&gt;</code>,
             <code>/memory</code>로도 다룰 수 있습니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="mcp">
+      <h2>giga mcp</h2>
+      <p class="section-note">외부 <b>MCP 서버</b>(Model Context Protocol)의 도구를 에이전트에 붙입니다.
+        설정은 Claude Code 와 같은 <code>.mcp.json</code> 형식이며, stdio 서버를 지원합니다
+        (외부 SDK 없이 자체 JSON-RPC 클라이언트).</p>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga mcp</span> list [-C DIR] &nbsp;·&nbsp; <span class="sig">giga mcp</span> check [서버] [-C DIR]</div>
+        <div class="cmd__body">
+          <table>
+            <tbody>
+              <tr><td><code>giga mcp list</code></td><td>설정된 서버 표 (연결 안 함)</td></tr>
+              <tr><td><code>giga mcp check</code></td><td>서버에 연결해 도구 목록을 가져옴</td></tr>
+            </tbody>
+          </table>
+          <pre><code><span class="c"># &lt;root&gt;/.mcp.json (또는 .agent/mcp.json, ~/.config/gigachanie/mcp.json)</span>
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    }
+  }
+}</code></pre>
+          <p><code>giga agent --mcp</code> 로 활성화하면 서버 도구가
+            <code>&lt;서버&gt;_&lt;도구&gt;</code> 이름으로 등록됩니다. 각 호출은 network 승인을 거칩니다.
+            세션이 끝나면 서버는 자동 종료됩니다. MCP 서버로 <b>동작</b>하는 모드는 이후(#18b).</p>
         </div>
       </div>
     </section>

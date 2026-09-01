@@ -116,6 +116,9 @@ def agent(
     no_checkpoint: bool = typer.Option(
         False, "--no-checkpoint", help="편집 스냅샷을 남기지 않는다 (giga undo 불가)."
     ),
+    use_mcp: bool = typer.Option(
+        False, "--mcp", help="설정된 MCP 서버(.mcp.json)의 도구를 활성화한다."
+    ),
     do_review: bool = typer.Option(
         False, "--review", help="작업 후 변경을 검토 모델에게 리뷰받는다."
     ),
@@ -200,11 +203,33 @@ def agent(
     )
 
     async def _go() -> int:
+        mcp_manager = None
+        if use_mcp:
+            from gigachanie.mcp import MCPManager, load_mcp_config
+            from gigachanie.mcp.tools import register_mcp_tools
+
+            configs = load_mcp_config(ctx.root)
+            if configs:
+                mcp_manager = MCPManager(configs, ctx.root)
+                handles = await mcp_manager.start()
+                added = register_mcp_tools(tools, mcp_manager)
+                oks = [h.name for h in handles if h.ok]
+                fails = [f"{h.name}({h.error})" for h in handles if not h.ok]
+                console.print(
+                    f"[dim]MCP: {', '.join(oks) or '없음'} · 도구 {added}개"
+                    + (f" · 실패 {', '.join(fails)}" if fails else "")
+                    + "[/dim]"
+                )
+            else:
+                console.print("[dim]MCP: .mcp.json 설정 없음[/dim]")
+
         try:
             result = await ag.run(task_text, on_event=handler)
             if (do_review or review_fix) and writable:
                 await _pipeline_review(ag, ctx.root, task_text, apply_fix=review_fix)
         finally:
+            if mcp_manager is not None:
+                await mcp_manager.stop()
             await backend.close()
             if procman is not None:
                 left = procman.list()

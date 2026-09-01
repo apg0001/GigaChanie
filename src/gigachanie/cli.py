@@ -16,6 +16,7 @@ from gigachanie.commands import doctor as doctor_cmd
 from gigachanie.commands import eval as eval_cmd
 from gigachanie.commands import init as init_cmd
 from gigachanie.commands import map as map_cmd
+from gigachanie.commands import mcp as mcp_cmd
 from gigachanie.commands import memory as memory_cmd
 from gigachanie.commands import model as model_cmd
 from gigachanie.commands import policy as policy_cmd
@@ -49,6 +50,7 @@ app.command("policy")(policy_cmd.policy)
 app.command("route")(route_cmd.route)
 app.command("review")(review_cmd.review)
 app.add_typer(memory_cmd.app, name="memory")
+app.add_typer(mcp_cmd.app, name="mcp")
 app.add_typer(model_cmd.app, name="model")
 
 
