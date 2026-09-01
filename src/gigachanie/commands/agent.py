@@ -23,6 +23,7 @@ from gigachanie.loop.agent import Agent
 from gigachanie.loop.approval import ApprovalMode, ApprovalPolicy
 from gigachanie.loop.builtin_tools import build_registry
 from gigachanie.loop.checkpoint import CheckpointStore
+from gigachanie.loop.procman import ProcessManager
 from gigachanie.loop.tools import ToolContext
 from gigachanie.serving.base import BackendError, run_sync
 from gigachanie.serving.factory import build_backend
@@ -85,7 +86,13 @@ def agent(
         if writable and not no_checkpoint
         else None
     )
-    ctx = ToolContext(root=root.resolve(), policy=policy, checkpoints=checkpoints)
+    procman = ProcessManager(root.resolve()) if writable else None
+    ctx = ToolContext(
+        root=root.resolve(),
+        policy=policy,
+        checkpoints=checkpoints,
+        procman=procman,
+    )
     if not ctx.root.is_dir():
         console.print(f"[red]디렉터리가 아닙니다: {root}[/red]")
         raise typer.Exit(code=1)
@@ -127,6 +134,13 @@ def agent(
             result = await ag.run(task_text, on_event=handler)
         finally:
             await backend.close()
+            if procman is not None:
+                left = procman.list()
+                if left:
+                    console.print(
+                        f"[yellow]백그라운드 프로세스 {len(left)}개 정리 중…[/yellow]"
+                    )
+                    procman.stop_all()
         console.print()
         console.rule("[bold]결과[/bold]")
         console.print(result.final_text or "(빈 응답)", markup=False)

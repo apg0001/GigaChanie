@@ -328,7 +328,7 @@
     <div class="meta">
       <span><b>버전</b> 0.0.1</span>
       <span><b>최종 업데이트</b> 2026-09-01</span>
-      <span><b>반영 범위</b> 이슈 #1–#14, #20, #24, #26</span>
+      <span><b>반영 범위</b> 이슈 #1–#14, #20, #24, #25, #26</span>
       <span><b>실행 명령</b> <code>giga</code></span>
     </div>
   </div>
@@ -348,6 +348,7 @@
       <li><a href="#chat">giga chat</a></li>
       <li><a href="#init">giga init</a></li>
       <li><a href="#undo">giga undo</a></li>
+      <li><a href="#ps">giga ps · kill</a></li>
       <li><a href="#map">giga map</a></li>
       <li><a href="#memory">giga memory</a></li>
       <li><a href="#eval">giga eval</a></li>
@@ -562,6 +563,7 @@ giga --help</code></pre>
               <tr><td><code>/memory</code></td><td>장기 메모리 목록</td></tr>
               <tr><td><code>/compact</code></td><td>지금까지 대화를 요약해 압축</td></tr>
               <tr><td><code>/undo</code></td><td>마지막 편집 턴을 되돌림</td></tr>
+              <tr><td><code>/ps</code></td><td>실행 중인 백그라운드 프로세스 목록</td></tr>
               <tr><td><code>/steps &lt;N&gt;</code></td><td>최대 스텝 변경</td></tr>
               <tr><td><code>/clear</code></td><td>대화 맥락 초기화 (설정 유지)</td></tr>
               <tr><td><code>/info</code></td><td>현재 세션 상태</td></tr>
@@ -607,6 +609,29 @@ giga --help</code></pre>
           </table>
           <p>새로 생성된 파일은 undo 시 삭제됩니다. <code>chat</code>에서는 <code>/undo</code>,
             스냅샷을 끄려면 <code>agent --no-checkpoint</code>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="ps">
+      <h2>giga ps · giga kill</h2>
+      <p class="section-note">쓰기 모드의 에이전트는 <code>run_background</code> 도구로 오래 도는 프로세스
+        (dev 서버, 빌드 워치)를 분리 실행하고, <code>tail_logs</code>·<code>wait_for_log</code>로
+        로그를 관찰합니다. 로그는 <code>.agent/logs/</code>에 파일로 쌓입니다.
+        세션이 끝나면 남은 프로세스는 자동으로 정리됩니다.</p>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga ps</span> [-C DIR] [-l &lt;id&gt;] &nbsp;·&nbsp; <span class="sig">giga kill</span> &lt;id&gt; [-C DIR]</div>
+        <div class="cmd__body">
+          <table>
+            <tbody>
+              <tr><td><code>giga ps</code></td><td>실행 중인 프로세스 목록 (죽은 항목은 자동 정리)</td></tr>
+              <tr><td><code>giga ps -l &lt;id&gt;</code></td><td>해당 프로세스의 최근 로그</td></tr>
+              <tr><td><code>giga kill &lt;id&gt;</code></td><td>프로세스 종료</td></tr>
+            </tbody>
+          </table>
+          <p>에이전트 도구: <code>run_background</code> · <code>tail_logs</code> ·
+            <code>wait_for_log</code>(정규식 패턴 대기) · <code>stop_process</code> ·
+            <code>list_processes</code>. <code>chat</code>에서 <code>/ps</code>.</p>
         </div>
       </div>
     </section>
@@ -696,6 +721,9 @@ giga --help</code></pre>
           <tr><td><code>write_file</code></td><td>파일 전체 쓰기. 승인 시 diff 표시, 내용 동일하면 no-op</td></tr>
           <tr><td><code>apply_edit</code></td><td>부분 수정. <code>search</code>를 찾아 <code>replace</code>로 교체. <code>search</code>가 빈 문자열이면 새 파일 생성</td></tr>
           <tr><td><code>run_shell</code></td><td>셸 명령 실행 (Windows=PowerShell, 그 외=sh). 타임아웃 최대 600초, 종료코드 반환</td></tr>
+          <tr><td><code>run_background</code></td><td>오래 도는 명령을 분리 실행하고 핸들 반환 (dev 서버 등)</td></tr>
+          <tr><td><code>tail_logs</code> / <code>wait_for_log</code></td><td>백그라운드 프로세스 로그 조회 / 패턴 대기</td></tr>
+          <tr><td><code>stop_process</code> / <code>list_processes</code></td><td>백그라운드 프로세스 종료 / 목록</td></tr>
           <tr><td><code>save_memory</code></td><td>장기 메모리에 저장 (승인 필요)</td></tr>
         </tbody>
       </table>
