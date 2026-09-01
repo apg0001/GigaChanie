@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
 
 import typer
 from rich.console import Console
@@ -106,8 +107,19 @@ def use(
     base_url: str = typer.Option("", "--base-url", help="openai_compat 백엔드 주소."),
     quant: str = typer.Option("", "--quant", "-q", help="양자화 이름 (예: q4_K_M)."),
     context: int = typer.Option(0, "--context", "-c", help="컨텍스트 길이(토큰)."),
+    pull: bool = typer.Option(
+        False, "--pull", "-p", help="다운로드 실패 시 오류로 종료한다 (강제)."
+    ),
+    no_pull: bool = typer.Option(
+        False, "--no-pull", help="가중치를 받지 않고 설정만 저장한다."
+    ),
 ) -> None:
-    """사용할 모델을 선택해 사용자 설정에 저장한다."""
+    """사용할 모델을 선택해 사용자 설정에 저장한다.
+
+    ollama 백엔드이고 모델이 아직 없으면 가중치를 자동으로 다운로드한다.
+    대화형 터미널에서는 먼저 확인하고, 비대화 환경에서는 바로 받는다.
+    받지 않으려면 --no-pull.
+    """
     reg = default_registry()
     m = reg.get(model_id)
     if m is None:
@@ -151,14 +163,35 @@ def use(
     console.print(f"[green]선택됨:[/green] {m.display}  ([cyan]{chosen_backend}[/cyan])")
     console.print(f"[dim]저장: {path}[/dim]")
     if chosen_backend == "ollama" and m.ollama_tag:
-        installed = _ollama_has(m.ollama_tag)
-        if installed:
+        if _ollama_has(m.ollama_tag):
             console.print(f"[green]✓[/green] ollama 에 '{m.ollama_tag}' 이미 있음")
         else:
-            console.print(
-                f"다운로드: [cyan]giga model pull[/cyan]  또는  "
-                f"[cyan]ollama pull {m.ollama_tag}[/cyan]"
-            )
+            if no_pull:
+                do_pull = False
+            elif pull:
+                do_pull = True
+            elif sys.stdin.isatty() and sys.stdout.isatty():
+                do_pull = typer.confirm(
+                    f"가중치 '{m.ollama_tag}' 가 없습니다. 지금 다운로드할까요?",
+                    default=True,
+                )
+            else:
+                do_pull = True  # 비대화 환경: 자동 다운로드
+
+            if do_pull:
+                code = _ollama_pull(m.ollama_tag)
+                if code != 0:
+                    if pull:
+                        raise typer.Exit(code=code)
+                    console.print(
+                        "[yellow]다운로드를 완료하지 못했습니다. "
+                        "나중에 [cyan]giga model pull[/cyan] 로 재시도하세요.[/yellow]"
+                    )
+            else:
+                console.print(
+                    f"나중에 받기: [cyan]giga model pull[/cyan]  또는  "
+                    f"[cyan]ollama pull {m.ollama_tag}[/cyan]"
+                )
     elif chosen_backend == "openai_compat" and not cfg.base_url:
         console.print(
             "[yellow]![/yellow] openai_compat 백엔드는 --base-url 이 필요합니다 "
@@ -179,6 +212,19 @@ def _ollama_has(tag: str) -> bool:
     return any(line.startswith(base) for line in out.stdout.splitlines()[1:])
 
 
+def _ollama_pull(tag: str) -> int:
+    """`ollama pull <tag>` 를 실행하고 종료코드를 돌려준다."""
+    if not shutil.which("ollama"):
+        console.print("[red]ollama 가 설치되어 있지 않습니다.[/red] https://ollama.com")
+        return 1
+    console.print(f"[cyan]ollama pull {tag}[/cyan] 실행 중...")
+    try:
+        return subprocess.run(["ollama", "pull", tag], check=False).returncode
+    except (OSError, subprocess.SubprocessError) as exc:
+        console.print(f"[red]다운로드 실패: {exc}[/red]")
+        return 1
+
+
 @app.command("pull")
 def pull(
     model_id: str = typer.Argument("", help="생략하면 현재 선택된 모델."),
@@ -195,9 +241,4 @@ def pull(
             f"[red]'{target_id}' 에 ollama 태그가 없습니다.[/red] 수동 설치가 필요합니다."
         )
         raise typer.Exit(code=1)
-    if not shutil.which("ollama"):
-        console.print("[red]ollama 가 설치되어 있지 않습니다.[/red] https://ollama.com")
-        raise typer.Exit(code=1)
-    console.print(f"[cyan]ollama pull {m.ollama_tag}[/cyan] 실행 중...")
-    result = subprocess.run(["ollama", "pull", m.ollama_tag], check=False)
-    raise typer.Exit(code=result.returncode)
+    raise typer.Exit(code=_ollama_pull(m.ollama_tag))
