@@ -51,7 +51,7 @@ async def _write_file(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     diff = _unified_diff(old_content, new_content, path)
     verb = "덮어쓰기" if exists else "새 파일"
     allowed, reason = ctx.policy.check(
-        ApprovalRequest(kind="write", summary=f"{verb}: {path}", detail=diff)
+        ApprovalRequest(kind="write", summary=f"{verb}: {path}", detail=diff, path=str(path))
     )
     if not allowed:
         return ToolResult.error(f"쓰기 거부됨 ({reason}): {path}")
@@ -94,6 +94,7 @@ async def _apply_edit(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
             kind="write",
             summary=f"편집: {path} ({result.method.value})",
             detail=diff,
+            path=str(path),
         )
     )
     if not allowed:

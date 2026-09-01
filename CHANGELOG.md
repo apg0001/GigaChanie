@@ -15,6 +15,10 @@
 - `giga eval` — 태스크셋으로 에이전트 통과율·편집실패·스텝/토큰 측정. 내장 태스크 3종, `--task`·`--json`, 전부 통과 시에만 종료코드 0 (#14)
 - `giga undo` — 에이전트가 마지막 턴에 수정한 파일을 그 이전 상태로 복원. `--list`, `/undo`, `--no-checkpoint` (#13)
 - 백그라운드 프로세스 — `run_background`/`tail_logs`/`wait_for_log`/`stop_process`/`list_processes` 도구, `giga ps`·`giga kill`·`/ps`. dev 서버 띄우고 로그 관찰 흐름 지원 (#25)
+- 권한 규칙 — `permissions.yaml`(사용자 < 프로젝트) 로 승인 모드·셸 정규식·편집 경로 glob 설정. 기본 보호 경로(.env, *.pem, .ssh 등) 편집 차단 + 민감 파일 읽기 경고. `giga policy` (#9)
+
+### 변경
+- `agent`/`chat` 의 `--mode` 기본값이 `suggest` 고정 → permissions.yaml 의 `mode` 값 (없으면 suggest)
 - `giga doctor` — OS/CPU/RAM/GPU 감지 후 실행 가능한 오픈모델 추천 (#3)
 - `giga model list / show / use / pull` — 모델 레지스트리 25종, 선택 시 가중치 자동 다운로드 (#3, #24)
 - `giga ask` / `giga ping` — 단발성 질의, 백엔드 연결 확인 (#4)
