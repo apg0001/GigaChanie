@@ -33,6 +33,7 @@ _HELP = """\
   /model [ID]        현재 모델 표시 / 변경
   /mode <모드>       승인 모드: suggest | auto-edit | full-auto
   /write on|off      쓰기·실행 도구 토글
+  /web on|off        웹 도구(web_search, web_fetch) 토글
   /clear             대화 맥락 초기화 (모델·설정 유지)
   /steps <N>         최대 스텝 변경
   /info              현재 세션 상태
@@ -52,11 +53,13 @@ class ChatSession:
         max_steps: int,
         temperature: float,
         use_context: bool = True,
+        web: bool = False,
     ) -> None:
         self.backend = backend
         self.root = root
         self.mode = mode
         self.writable = writable
+        self.web = web
         self.max_steps = max_steps
         self.temperature = temperature
         self.use_context = use_context
@@ -66,7 +69,7 @@ class ChatSession:
         self.agent = self._new_agent()
 
     def _new_agent(self) -> Agent:
-        tools = build_registry(writable=self.writable)
+        tools = build_registry(writable=self.writable, web=self.web)
         policy = ApprovalPolicy(mode=self.mode, approver=interactive_approver)
         ctx = ToolContext(root=self.root, policy=policy)
         return Agent(
@@ -109,6 +112,8 @@ class ChatSession:
             self._cmd_mode(args)
         elif cmd == "/write":
             self._cmd_write(args)
+        elif cmd == "/web":
+            self._cmd_web(args)
         elif cmd == "/steps":
             self._cmd_steps(args)
         else:
@@ -159,6 +164,14 @@ class ChatSession:
         self.rebuild(keep_history=True)
         console.print(f"쓰기 도구: [cyan]{'on' if self.writable else 'off'}[/cyan]")
 
+    def _cmd_web(self, args: list[str]) -> None:
+        if not args or args[0] not in ("on", "off"):
+            console.print("사용법: /web on|off")
+            return
+        self.web = args[0] == "on"
+        self.rebuild(keep_history=True)
+        console.print(f"웹 도구: [cyan]{'on' if self.web else 'off'}[/cyan]")
+
     def _cmd_steps(self, args: list[str]) -> None:
         if not args or not args[0].isdigit():
             console.print("사용법: /steps <N>")
@@ -189,6 +202,7 @@ async def _run_turn(session: ChatSession, text: str) -> None:
 def chat(
     root: Path = typer.Option(Path("."), "--root", "-C", help="작업 루트 디렉터리."),
     write: bool = typer.Option(False, "--write", "-w", help="쓰기/실행 도구 활성화."),
+    web: bool = typer.Option(False, "--web", help="웹 도구 활성화."),
     mode: str = typer.Option("suggest", "--mode", help="suggest | auto-edit | full-auto."),
     max_steps: int = typer.Option(20, "--max-steps"),
     temperature: float = typer.Option(0.0, "--temperature", "-t"),
@@ -219,6 +233,7 @@ def chat(
         root_path,
         mode=approval_mode,
         writable=write,
+        web=web,
         max_steps=max_steps,
         temperature=temperature,
         use_context=not no_context,

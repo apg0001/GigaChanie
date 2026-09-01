@@ -29,6 +29,9 @@ def agent(
     write: bool = typer.Option(
         False, "--write", "-w", help="쓰기/실행 도구(write_file, run_shell) 활성화."
     ),
+    web: bool = typer.Option(
+        False, "--web", help="웹 도구(web_search, web_fetch) 활성화."
+    ),
     mode: str = typer.Option(
         "suggest", "--mode", help="승인 모드: suggest | auto-edit | full-auto."
     ),
@@ -56,7 +59,7 @@ def agent(
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=1) from None
 
-    tools = build_registry(writable=writable)
+    tools = build_registry(writable=writable, web=web)
     policy = ApprovalPolicy(
         mode=approval_mode,
         approver=None if yolo else interactive_approver,
