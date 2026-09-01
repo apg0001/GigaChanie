@@ -328,7 +328,7 @@
     <div class="meta">
       <span><b>버전</b> 0.0.1</span>
       <span><b>최종 업데이트</b> 2026-09-01</span>
-      <span><b>반영 범위</b> 이슈 #1–#18, #20–#22, #24–#29 (부분 포함)</span>
+      <span><b>반영 범위</b> 이슈 #1–#22, #24–#29 (부분 포함)</span>
       <span><b>실행 명령</b> <code>giga</code></span>
     </div>
   </div>
@@ -356,6 +356,7 @@
       <li><a href="#route">giga route</a></li>
       <li><a href="#review">giga review</a></li>
       <li><a href="#git">giga commit · pr</a></li>
+      <li><a href="#ext">커스텀 명령 · 훅</a></li>
       <li><a href="#tools">도구</a></li>
       <li><a href="#approval">승인 모드</a></li>
       <li><a href="#models">모델 &amp; 백엔드</a></li>
@@ -789,6 +790,38 @@ pipeline:
   review: reviewer</code></pre>
         </div>
       </div>
+    </section>
+
+    <section id="ext">
+      <h2>커스텀 명령 · 훅</h2>
+      <p class="section-note"><code>chat</code>을 프로젝트에 맞게 확장합니다.</p>
+
+      <h3>커스텀 슬래시 명령</h3>
+      <p><code>&lt;root&gt;/.agent/commands/&lt;이름&gt;.md</code>를 만들면 <code>chat</code>에서
+        <code>/이름 인자</code>로 실행됩니다. 본문의 <code>$ARGUMENTS</code>·<code>{{args}}</code>·
+        <code>$1</code>..가 입력으로 치환되어 에이전트에게 전달됩니다.</p>
+      <pre><code><span class="c"># .agent/commands/fixtest.md</span>
+---
+description: 실패 테스트 고치기
+---
+실패하는 테스트를 찾아서 통과시켜라. 대상: $ARGUMENTS</code></pre>
+      <p><code>chat</code>에서 <code>/commands</code>로 목록을 봅니다.</p>
+
+      <h3>훅</h3>
+      <p><code>&lt;root&gt;/.agent/hooks.yaml</code>에 이벤트별 셸 명령을 등록합니다.
+        <code>pre_tool</code> 훅이 <b>종료코드 ≠ 0</b>이면 그 도구 호출이 차단됩니다.
+        훅에는 <code>GIGA_EVENT</code>·<code>GIGA_TOOL_NAME</code>·<code>GIGA_TOOL_ARGS</code>가
+        환경변수와 stdin(JSON)으로 전달됩니다.</p>
+      <pre><code><span class="c"># .agent/hooks.yaml</span>
+session_start:
+  - run: "echo 세션 시작"
+pre_tool:
+  - match: "run_shell|write_file"   <span class="c"># 도구 이름 정규식</span>
+    run: "./scripts/guard.sh"
+post_tool:
+  - run: "git status --short"
+stop:
+  - run: "echo 완료"</code></pre>
     </section>
 
     <section id="git">

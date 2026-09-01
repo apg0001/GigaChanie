@@ -31,6 +31,8 @@ class ToolContext:
     # 에이전트가 사용자에게 물어볼 때 쓰는 콜백. (질문, 선택지, 자유입력 허용) -> 답변.
     # None 이면 비대화 세션 → ask_user 는 "가정하고 진행" 안내를 돌려준다.
     ask_user: Callable[[str, list[str], bool], str] | None = None
+    # 훅 러너 (.agent/hooks.yaml). None 이면 훅 비활성.
+    hooks: Any = None  # HookRunner | None (순환 임포트 회피)
     # 도구가 남기는 부가 메모(감사 로그 등)
     scratch: dict[str, Any] = field(default_factory=dict)
 
