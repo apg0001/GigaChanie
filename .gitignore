@@ -26,5 +26,6 @@ Thumbs.db
 .agent/cache/
 .agent/logs/
 .agent/checkpoints/
+.agent/sessions/
 *.local.yaml
 .env
