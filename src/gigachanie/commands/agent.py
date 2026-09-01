@@ -12,6 +12,7 @@ import typer
 from rich.console import Console
 
 from gigachanie.commands._agentui import interactive_approver, make_event_printer
+from gigachanie.context import expand_file_refs, load_project_context
 from gigachanie.loop.agent import Agent
 from gigachanie.loop.approval import ApprovalMode, ApprovalPolicy
 from gigachanie.loop.builtin_tools import build_registry
@@ -36,6 +37,9 @@ def agent(
     ),
     max_steps: int = typer.Option(20, "--max-steps", help="최대 반복 스텝."),
     temperature: float = typer.Option(0.0, "--temperature", "-t"),
+    no_context: bool = typer.Option(
+        False, "--no-context", help="AGENTS.md 등 프로젝트 컨텍스트 파일을 읽지 않는다."
+    ),
 ) -> None:
     """도구를 사용해 코드베이스를 조사하거나 수정한다."""
     task_text = " ".join(task)
@@ -62,12 +66,27 @@ def agent(
         console.print(f"[red]디렉터리가 아닙니다: {root}[/red]")
         raise typer.Exit(code=1)
 
+    pc = None if no_context else load_project_context(ctx.root, Path.cwd())
+    task_text, refs = expand_file_refs(task_text, ctx.root)
+
+    ctx_note = ""
+    if pc and pc.found:
+        ctx_note = f" · 컨텍스트 {', '.join(p.name for p in pc.sources)}"
+    if refs:
+        ctx_note += f" · 첨부 {', '.join(refs)}"
     console.print(
         f"[dim]모델 {backend.model} · 도구 {', '.join(tools.names())} · "
-        f"모드 {approval_mode.value}{' · yolo' if yolo else ''} · 루트 {ctx.root}[/dim]"
+        f"모드 {approval_mode.value}{' · yolo' if yolo else ''} · 루트 {ctx.root}{ctx_note}[/dim]"
     )
     handler = make_event_printer()
-    ag = Agent(backend, tools, ctx, max_steps=max_steps, temperature=temperature)
+    ag = Agent(
+        backend,
+        tools,
+        ctx,
+        project_context=pc.text if pc else None,
+        max_steps=max_steps,
+        temperature=temperature,
+    )
 
     async def _go() -> int:
         try:
