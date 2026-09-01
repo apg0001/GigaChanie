@@ -36,9 +36,9 @@ def test_start_tail_stop(tmp_path: Path) -> None:
     h = pm.start(f"{PY} s.py")
     try:
         assert h.alive()
-        time.sleep(1.0)
-        out = pm.tail(h.id, lines=10)
-        assert "tick" in out
+        ok, _ = pm.wait_for(h.id, r"tick", timeout=10)
+        assert ok, pm.tail(h.id)
+        assert "tick" in pm.tail(h.id, lines=10)
         assert any(p.id == h.id for p in pm.list())
     finally:
         assert pm.stop(h.id) is True
@@ -77,7 +77,8 @@ def test_proc_도구들(tmp_path: Path) -> None:
         pid_line = start.content
         proc_id = pid_line.split("id=")[1].split()[0]
 
-        time.sleep(0.8)
+        ok, _ = pm.wait_for(proc_id, r"alive", timeout=10)
+        assert ok
         tail = run_sync(reg.get("tail_logs").run({"id": proc_id}, ctx))
         assert "alive" in tail.content
 
