@@ -22,6 +22,7 @@ from gigachanie.context import (
 from gigachanie.loop.agent import Agent
 from gigachanie.loop.approval import ApprovalMode, ApprovalPolicy
 from gigachanie.loop.builtin_tools import build_registry
+from gigachanie.loop.checkpoint import CheckpointStore
 from gigachanie.loop.tools import ToolContext
 from gigachanie.serving.base import BackendError, run_sync
 from gigachanie.serving.factory import build_backend
@@ -55,6 +56,9 @@ def agent(
     compact_at: int = typer.Option(
         0, "--compact-at", help="이 토큰 수 초과 시 대화 자동 압축 (0=컨텍스트의 70%)."
     ),
+    no_checkpoint: bool = typer.Option(
+        False, "--no-checkpoint", help="편집 스냅샷을 남기지 않는다 (giga undo 불가)."
+    ),
 ) -> None:
     """도구를 사용해 코드베이스를 조사하거나 수정한다."""
     task_text = " ".join(task)
@@ -76,7 +80,12 @@ def agent(
         mode=approval_mode,
         approver=None if yolo else interactive_approver,
     )
-    ctx = ToolContext(root=root.resolve(), policy=policy)
+    checkpoints = (
+        CheckpointStore(root.resolve())
+        if writable and not no_checkpoint
+        else None
+    )
+    ctx = ToolContext(root=root.resolve(), policy=policy, checkpoints=checkpoints)
     if not ctx.root.is_dir():
         console.print(f"[red]디렉터리가 아닙니다: {root}[/red]")
         raise typer.Exit(code=1)

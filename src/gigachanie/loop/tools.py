@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
 from gigachanie.loop.approval import ApprovalPolicy
+from gigachanie.loop.checkpoint import CheckpointStore
 from gigachanie.serving.base import ToolSpec
 
 
@@ -22,8 +23,14 @@ class ToolContext:
     root: Path
     # 쓰기/실행 도구가 참조하는 승인 정책. 기본값은 "쓰기/실행 거부".
     policy: ApprovalPolicy = field(default_factory=ApprovalPolicy)
+    # 편집 스냅샷 저장소. None 이면 체크포인트 비활성.
+    checkpoints: CheckpointStore | None = None
     # 도구가 남기는 부가 메모(감사 로그 등)
     scratch: dict[str, Any] = field(default_factory=dict)
+
+    def snapshot(self, path: Path) -> None:
+        if self.checkpoints is not None:
+            self.checkpoints.before_write(path)
 
     def resolve(self, rel: str) -> Path:
         """루트 기준 상대경로를 절대경로로. 루트 밖으로 벗어나면 예외."""

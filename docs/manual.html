@@ -328,7 +328,7 @@
     <div class="meta">
       <span><b>버전</b> 0.0.1</span>
       <span><b>최종 업데이트</b> 2026-09-01</span>
-      <span><b>반영 범위</b> 이슈 #1–#12b, #14, #20, #24, #26</span>
+      <span><b>반영 범위</b> 이슈 #1–#14, #20, #24, #26</span>
       <span><b>실행 명령</b> <code>giga</code></span>
     </div>
   </div>
@@ -347,6 +347,7 @@
       <li><a href="#agent">giga agent</a></li>
       <li><a href="#chat">giga chat</a></li>
       <li><a href="#init">giga init</a></li>
+      <li><a href="#undo">giga undo</a></li>
       <li><a href="#map">giga map</a></li>
       <li><a href="#memory">giga memory</a></li>
       <li><a href="#eval">giga eval</a></li>
@@ -530,6 +531,7 @@ giga --help</code></pre>
               <tr><td><code>--no-context</code></td><td>AGENTS.md 등 프로젝트 컨텍스트를 읽지 않음</td></tr>
               <tr><td><code>--no-map</code></td><td>저장소 심볼 맵을 컨텍스트에 넣지 않음</td></tr>
               <tr><td><code>--compact-at</code></td><td>이 토큰 수 초과 시 대화 자동 압축 (0 = 컨텍스트의 70%)</td></tr>
+              <tr><td><code>--no-checkpoint</code></td><td>편집 스냅샷을 남기지 않음 (<code>giga undo</code> 불가)</td></tr>
             </tbody>
           </table>
           <pre><code><span class="p">giga</span> agent -w --mode auto-edit "모든 함수에 타입 힌트를 추가해줘"
@@ -559,6 +561,7 @@ giga --help</code></pre>
               <tr><td><code>/remember &lt;내용&gt;</code></td><td>장기 메모리에 저장</td></tr>
               <tr><td><code>/memory</code></td><td>장기 메모리 목록</td></tr>
               <tr><td><code>/compact</code></td><td>지금까지 대화를 요약해 압축</td></tr>
+              <tr><td><code>/undo</code></td><td>마지막 편집 턴을 되돌림</td></tr>
               <tr><td><code>/steps &lt;N&gt;</code></td><td>최대 스텝 변경</td></tr>
               <tr><td><code>/clear</code></td><td>대화 맥락 초기화 (설정 유지)</td></tr>
               <tr><td><code>/info</code></td><td>현재 세션 상태</td></tr>
@@ -585,6 +588,25 @@ giga --help</code></pre>
           </table>
           <p>감지 대상: <code>pyproject.toml</code>, <code>package.json</code>, <code>Cargo.toml</code>,
             <code>go.mod</code>, <code>Makefile</code>. 생성 후 반드시 내용을 검토하세요.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="undo">
+      <h2>giga undo</h2>
+      <p class="section-note"><code>agent</code>·<code>chat</code>은 쓰기 모드에서 <b>턴 단위로</b>
+        파일을 처음 수정하기 직전 내용을 <code>.agent/checkpoints/</code>에 스냅샷합니다
+        (git 유무와 무관). <code>giga undo</code>는 가장 최근 턴을 통째로 되돌립니다.</p>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga undo</span> [-C DIR] [--list]</div>
+        <div class="cmd__body">
+          <table>
+            <tbody>
+              <tr><td><code>--list</code>, <code>-l</code></td><td>되돌리지 않고 체크포인트 이력만 표시</td></tr>
+            </tbody>
+          </table>
+          <p>새로 생성된 파일은 undo 시 삭제됩니다. <code>chat</code>에서는 <code>/undo</code>,
+            스냅샷을 끄려면 <code>agent --no-checkpoint</code>.</p>
         </div>
       </div>
     </section>
@@ -717,6 +739,7 @@ giga --help</code></pre>
         <li><b>거부 목록</b> — 파괴적 명령은 모드와 무관하게 차단.</li>
         <li><code>--yolo</code> — <code>full-auto</code> + <code>--write</code> 를 한 번에. 확인 창이 전혀 뜨지 않습니다.</li>
         <li>승인 거부는 오류가 아니라 모델에게 피드백으로 전달되어 다른 방법을 찾게 합니다.</li>
+        <li>쓰기 모드에서는 편집 직전 파일이 스냅샷되어 <a href="#undo"><code>giga undo</code></a>로 되돌릴 수 있습니다.</li>
       </ul>
     </section>
 
