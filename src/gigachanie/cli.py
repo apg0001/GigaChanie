@@ -20,6 +20,7 @@ from gigachanie.commands import memory as memory_cmd
 from gigachanie.commands import model as model_cmd
 from gigachanie.commands import policy as policy_cmd
 from gigachanie.commands import ps as ps_cmd
+from gigachanie.commands import review as review_cmd
 from gigachanie.commands import route as route_cmd
 from gigachanie.commands import setup as setup_cmd
 from gigachanie.commands import undo as undo_cmd
@@ -46,6 +47,7 @@ app.command("ps")(ps_cmd.ps)
 app.command("kill")(ps_cmd.kill)
 app.command("policy")(policy_cmd.policy)
 app.command("route")(route_cmd.route)
+app.command("review")(review_cmd.review)
 app.add_typer(memory_cmd.app, name="memory")
 app.add_typer(model_cmd.app, name="model")
 

@@ -13,7 +13,7 @@ from rich.console import Console
 
 from gigachanie.commands._agentui import ask_user, make_approver, make_event_printer
 from gigachanie.commands._pick import is_tty as _is_tty
-from gigachanie.config import load_config
+from gigachanie.config import Config, load_config
 from gigachanie.context import (
     MemoryStore,
     build_repo_map,
@@ -31,6 +31,60 @@ from gigachanie.serving.base import BackendError, run_sync
 from gigachanie.serving.factory import build_backend
 
 console = Console()
+
+
+async def _pipeline_review(
+    ag: Agent, root: Path, task: str, *, apply_fix: bool
+) -> None:
+    """작업 후 git diff 를 검토 모델에게 리뷰받고, apply_fix 면 한 번 더 수정한다."""
+    import subprocess
+
+    from gigachanie.orchestra.pipeline import load_pipeline_config, review_diff
+    from gigachanie.serving.factory import build_backend as _bb
+
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(root), "diff", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+        diff = proc.stdout
+    except (OSError, subprocess.SubprocessError):
+        diff = ""
+    if not diff.strip():
+        console.print("[dim]리뷰: 변경 없음 (git diff 비어 있음)[/dim]")
+        return
+
+    pl = load_pipeline_config(root)
+    review_backend = ag.backend
+    if pl.review_ref is not None:
+        review_backend = _bb(
+            Config(
+                model_id=pl.review_ref.model,
+                backend=pl.review_ref.backend,
+                base_url=pl.review_ref.base_url,
+                context=pl.review_ref.context,
+            ),
+            root=root,
+        )
+
+    console.print()
+    console.rule("[bold]리뷰[/bold]")
+    result = await review_diff(review_backend, diff, task=task)
+    console.print(result.text, markup=False)
+    if review_backend is not ag.backend:
+        await review_backend.close()
+
+    if apply_fix and result.has_issues:
+        console.print()
+        console.rule("[bold]수정 반영[/bold]")
+        fix_prompt = (
+            "방금 리뷰에서 아래 지적이 나왔습니다. 타당한 것만 반영해 수정하세요:\n\n"
+            + result.text
+        )
+        await ag.run(fix_prompt, on_event=make_event_printer())
 
 
 def agent(
@@ -61,6 +115,12 @@ def agent(
     ),
     no_checkpoint: bool = typer.Option(
         False, "--no-checkpoint", help="편집 스냅샷을 남기지 않는다 (giga undo 불가)."
+    ),
+    do_review: bool = typer.Option(
+        False, "--review", help="작업 후 변경을 검토 모델에게 리뷰받는다."
+    ),
+    review_fix: bool = typer.Option(
+        False, "--review-fix", help="리뷰 지적사항을 에이전트에 되돌려 한 번 더 수정한다."
     ),
 ) -> None:
     """도구를 사용해 코드베이스를 조사하거나 수정한다."""
@@ -142,6 +202,8 @@ def agent(
     async def _go() -> int:
         try:
             result = await ag.run(task_text, on_event=handler)
+            if (do_review or review_fix) and writable:
+                await _pipeline_review(ag, ctx.root, task_text, apply_fix=review_fix)
         finally:
             await backend.close()
             if procman is not None:
