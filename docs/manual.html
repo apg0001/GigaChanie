@@ -328,7 +328,7 @@
     <div class="meta">
       <span><b>버전</b> 0.0.1</span>
       <span><b>최종 업데이트</b> 2026-09-01</span>
-      <span><b>반영 범위</b> 이슈 #1–#16, #20, #24–#28 (부분 포함)</span>
+      <span><b>반영 범위</b> 이슈 #1–#16, #20, #24–#29 (부분 포함)</span>
       <span><b>실행 명령</b> <code>giga</code></span>
     </div>
   </div>
@@ -396,22 +396,24 @@
 
     <section id="install">
       <h2>설치</h2>
-      <p class="section-note">Python 3.11 이상이 필요합니다. 로컬 모델을 쓰려면 별도로
-        <a href="https://ollama.com">Ollama</a>를 설치하세요.</p>
+      <p class="section-note">Python 3.11 이상이 필요합니다.</p>
       <pre><code><span class="c"># 저장소에서 편집 가능 모드로 설치</span>
 python -m pip install -e ".[dev]"
 
-<span class="c"># 확인</span>
-giga --version
-giga --help</code></pre>
+<span class="c"># 첫 실행 안내 (Ollama 설치 + 모델 설정)</span>
+<span class="p">giga</span> setup</code></pre>
+      <p><code>giga setup</code>은 <a href="https://ollama.com">Ollama</a>가 없으면 설치할지 물어본 뒤
+        (Windows=winget, macOS=brew, Linux=install.sh) 설치하고, 모델을 고르게 합니다.
+        <code>giga model use</code>도 Ollama 미설치를 감지하면 같은 확인을 띄웁니다.</p>
       <p>설치하면 <code>giga</code> 명령이 생깁니다. <code>python -m gigachanie</code> 로도 실행됩니다.</p>
     </section>
 
     <section id="quickstart">
       <h2>빠른 시작</h2>
       <p class="section-note">장비 진단 → 모델 선택(자동 다운로드) → 대화 시작.</p>
-      <pre><code><span class="p">giga</span> doctor                              <span class="c"># 장비에 맞는 모델 추천</span>
-<span class="p">giga</span> model use qwen3-coder-30b-a3b-instruct <span class="c"># 선택 + 가중치 자동 다운로드</span>
+      <pre><code><span class="p">giga</span> setup                               <span class="c"># Ollama 설치 + 모델 선택 (첫 실행)</span>
+<span class="p">giga</span> doctor                              <span class="c"># 장비에 맞는 모델 추천</span>
+<span class="p">giga</span> model use                           <span class="c"># 화살표로 모델 선택 (미설치 시 설치 확인)</span>
 <span class="p">giga</span> ping                                <span class="c"># 백엔드 연결 확인</span>
 
 <span class="c"># 읽기 전용으로 코드베이스 질문</span>
@@ -420,8 +422,9 @@ giga --help</code></pre>
 <span class="c"># 편집까지 (대화형, 각 변경 승인)</span>
 <span class="p">giga</span> chat -w</code></pre>
       <div class="callout">
-        <p><b>참고</b> 실제 모델 호출에는 Ollama 실행과 모델 다운로드가 필요합니다.
-          <code>giga model use</code>는 모델이 없으면 자동으로 받습니다(대화형에서는 먼저 확인).</p>
+        <p><b>참고</b> 실제 모델 호출에는 Ollama(또는 OpenAI 호환 서버)가 필요합니다.
+          <code>giga setup</code> / <code>giga model use</code>가 Ollama 설치와 모델 다운로드를
+          안내합니다. 비대화 환경에서는 설치를 자동 진행하지 않고 안내만 합니다.</p>
       </div>
     </section>
 
