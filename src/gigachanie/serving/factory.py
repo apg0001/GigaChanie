@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from gigachanie.config import Config, load_config
 from gigachanie.providers.registry import Registry, ToolCalling, default_registry
@@ -24,19 +25,7 @@ def _resolve_model_name(cfg: Config, reg: Registry) -> tuple[str, ToolCalling]:
     return model_name, tool_mode
 
 
-def build_backend(cfg: Config | None = None, reg: Registry | None = None) -> Backend:
-    """현재 설정에 맞는 백엔드를 생성한다.
-
-    모델은 `giga model use` 로 먼저 선택돼 있어야 한다.
-    """
-    cfg = cfg or load_config()
-    reg = reg or default_registry()
-
-    if not cfg.model_id:
-        raise BackendError(
-            "선택된 모델이 없습니다. `giga model use <ID>` 또는 `giga doctor` 를 먼저 실행하세요."
-        )
-
+def _backend_from_cfg(cfg: Config, reg: Registry) -> Backend:
     model_name, tool_mode = _resolve_model_name(cfg, reg)
 
     if cfg.backend == "ollama":
@@ -63,3 +52,50 @@ def build_backend(cfg: Config | None = None, reg: Registry | None = None) -> Bac
         )
 
     raise BackendError(f"알 수 없는 백엔드: {cfg.backend!r} (ollama | openai_compat)")
+
+
+def build_backend(
+    cfg: Config | None = None,
+    reg: Registry | None = None,
+    *,
+    root: Path | None = None,
+) -> Backend:
+    """현재 설정에 맞는 백엔드를 생성한다.
+
+    `<root>/.agent/orchestra.yaml` 이 있으면 작업 분류 라우터를 반환한다.
+    아니면 `giga model use` 로 선택된 단일 모델 백엔드를 반환한다.
+    """
+    cfg = cfg or load_config()
+    reg = reg or default_registry()
+
+    orch = _try_router(reg, root or Path.cwd(), cfg)
+    if orch is not None:
+        return orch
+
+    if not cfg.model_id:
+        raise BackendError(
+            "선택된 모델이 없습니다. `giga model use <ID>` 또는 `giga doctor` 를 먼저 실행하세요."
+        )
+    return _backend_from_cfg(cfg, reg)
+
+
+def _try_router(reg: Registry, root: Path, cfg: Config) -> Backend | None:
+    from gigachanie.orchestra.router import ModelRef, RouterBackend, load_orchestra_config
+
+    oc = load_orchestra_config(root)
+    if not oc.enabled:
+        return None
+
+    def make(ref: ModelRef) -> Backend:
+        return _backend_from_cfg(
+            Config(
+                model_id=ref.model,
+                backend=ref.backend,
+                base_url=ref.base_url,
+                context=ref.context,
+            ),
+            reg,
+        )
+
+    fallback = _backend_from_cfg(cfg, reg) if cfg.model_id else None
+    return RouterBackend(oc, make, fallback=fallback)

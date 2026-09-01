@@ -76,7 +76,7 @@ def agent(
 
     writable = write or yolo
     try:
-        backend = build_backend()
+        backend = build_backend(root=root.resolve())
     except BackendError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=1) from None
