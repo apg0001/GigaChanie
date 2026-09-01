@@ -25,6 +25,10 @@ DEFAULT_SYSTEM_PROMPT = """\
 - 편집 전에 read_file 로 대상 부분의 현재 내용을 반드시 확인합니다.
 - 편집이 실패하면 파일을 다시 읽고 search 를 실제 내용에 맞춰 다시 시도합니다.
 - 새 파일은 write_file 로, 또는 apply_edit 에서 search 를 비워 만듭니다.
+
+메모리:
+- 위에 장기 메모리 목록이 있으면, 관련될 때 read_memory 로 본문을 가져옵니다.
+- 이후 세션에도 유용한 프로젝트 규칙·결정·맥락은 save_memory 로 저장합니다(있을 때).
 """
 
 
@@ -32,10 +36,13 @@ def build_system_prompt(
     extra: str | None = None,
     project_context: str | None = None,
     repo_map: str | None = None,
+    memory_index: str | None = None,
 ) -> str:
     parts = [DEFAULT_SYSTEM_PROMPT]
     if project_context:
         parts.append("프로젝트 컨텍스트:\n" + project_context.strip())
+    if memory_index:
+        parts.append(memory_index.strip())
     if repo_map:
         parts.append(repo_map.strip())
     if extra:

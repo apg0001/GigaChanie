@@ -191,8 +191,11 @@ def register_readonly_tools(reg: ToolRegistry) -> None:
 
 
 def default_readonly_registry() -> ToolRegistry:
+    from gigachanie.loop.memory_tools import register_read_memory
+
     reg = ToolRegistry()
     register_readonly_tools(reg)
+    register_read_memory(reg)
     return reg
 
 
@@ -200,9 +203,11 @@ def build_registry(*, writable: bool = False, web: bool = False) -> ToolRegistry
     """읽기 도구 + (옵션) 쓰기/실행 도구 + (옵션) 웹 도구를 등록한 레지스트리."""
     reg = default_readonly_registry()
     if writable:
+        from gigachanie.loop.memory_tools import register_save_memory
         from gigachanie.loop.write_tools import register_write_tools
 
         register_write_tools(reg)
+        register_save_memory(reg)
     if web:
         from gigachanie.loop.web_tools import register_web_tools
 
