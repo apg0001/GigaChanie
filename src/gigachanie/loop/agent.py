@@ -108,6 +108,9 @@ class Agent:
         emit = on_event or (lambda _e: None)
         self.messages.append(Message.user(user_input))
 
+        if self.ctx.checkpoints is not None:
+            self.ctx.checkpoints.open_turn(user_input)
+
         stop: StopReason = "max_steps"
         final_text = ""
 
@@ -137,6 +140,8 @@ class Agent:
                 )
             except BackendError as exc:
                 emit(AgentEvent(kind="error", text=str(exc), is_error=True, step=step))
+                if self.ctx.checkpoints is not None:
+                    self.ctx.checkpoints.close_turn()
                 return AgentResult(
                     final_text=str(exc),
                     stop_reason="error",
@@ -176,6 +181,9 @@ class Agent:
             final_text = (
                 f"최대 스텝({self.max_steps})에 도달했습니다. 작업이 완료되지 않았을 수 있습니다."
             )
+
+        if self.ctx.checkpoints is not None:
+            self.ctx.checkpoints.close_turn()
 
         emit(AgentEvent(kind="done", text=final_text))
         return AgentResult(

@@ -26,6 +26,7 @@ from gigachanie.context import (
 from gigachanie.loop.agent import Agent
 from gigachanie.loop.approval import ApprovalMode, ApprovalPolicy
 from gigachanie.loop.builtin_tools import build_registry
+from gigachanie.loop.checkpoint import CheckpointStore
 from gigachanie.loop.tools import ToolContext
 from gigachanie.serving.base import Backend, BackendError, run_sync
 from gigachanie.serving.factory import build_backend
@@ -43,6 +44,7 @@ _HELP = """\
   /remember <내용>   장기 메모리에 저장 (제목은 앞 40자)
   /memory            장기 메모리 목록
   /compact           지금까지 대화를 요약해 압축
+  /undo              마지막 편집 턴을 되돌림
   /clear             대화 맥락 초기화 (모델·설정 유지)
   /steps <N>         최대 스텝 변경
   /info              현재 세션 상태
@@ -82,6 +84,7 @@ class ChatSession:
         self.memory_store = MemoryStore(root)
         self._refresh_memory()
         self.compact_at = int((load_config().context or 32000) * 0.7)
+        self.checkpoints = CheckpointStore(root)
         self.agent = self._new_agent()
 
     def _refresh_memory(self) -> None:
@@ -91,7 +94,11 @@ class ChatSession:
     def _new_agent(self) -> Agent:
         tools = build_registry(writable=self.writable, web=self.web)
         policy = ApprovalPolicy(mode=self.mode, approver=interactive_approver)
-        ctx = ToolContext(root=self.root, policy=policy)
+        ctx = ToolContext(
+            root=self.root,
+            policy=policy,
+            checkpoints=self.checkpoints if self.writable else None,
+        )
         return Agent(
             self.backend,
             tools,
@@ -143,6 +150,8 @@ class ChatSession:
             self._cmd_memory()
         elif cmd == "/compact":
             self._cmd_compact()
+        elif cmd == "/undo":
+            self._cmd_undo()
         elif cmd == "/steps":
             self._cmd_steps(args)
         else:
@@ -226,6 +235,16 @@ class ChatSession:
         did = run_sync(self.agent.compact_now(make_event_printer()))
         if not did:
             console.print("[dim]압축할 만큼 대화가 길지 않습니다.[/dim]")
+
+    def _cmd_undo(self) -> None:
+        result = self.checkpoints.undo()
+        if result is None:
+            console.print("[yellow]되돌릴 편집이 없습니다.[/yellow]")
+            return
+        label, restored = result
+        console.print(f"[green]되돌림:[/green] {label}")
+        for r in restored:
+            console.print(f"  {escape(r)}")
 
     def _cmd_steps(self, args: list[str]) -> None:
         if not args or not args[0].isdigit():

@@ -56,6 +56,7 @@ async def _write_file(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     if not allowed:
         return ToolResult.error(f"쓰기 거부됨 ({reason}): {path}")
 
+    ctx.snapshot(target)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(new_content, encoding="utf-8")
     added = new_content.count("\n") + 1
@@ -98,6 +99,7 @@ async def _apply_edit(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     if not allowed:
         return ToolResult.error(f"편집 거부됨 ({reason}): {path}")
 
+    ctx.snapshot(target)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(result.new_content, encoding="utf-8")
     where = f" @{result.start_line}행" if result.start_line else ""

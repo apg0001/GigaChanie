@@ -25,5 +25,6 @@ Thumbs.db
 # GigaChanie 로컬 상태
 .agent/cache/
 .agent/logs/
+.agent/checkpoints/
 *.local.yaml
 .env
