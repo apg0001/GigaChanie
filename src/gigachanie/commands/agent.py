@@ -126,6 +126,9 @@ def agent(
     review_fix: bool = typer.Option(
         False, "--review-fix", help="리뷰 지적사항을 에이전트에 되돌려 한 번 더 수정한다."
     ),
+    as_json: bool = typer.Option(
+        False, "--json", help="사람용 출력 대신 결과를 JSON 한 덩어리로 출력한다 (CI용)."
+    ),
 ) -> None:
     """도구를 사용해 코드베이스를 조사하거나 수정한다."""
     task_text = " ".join(task)
@@ -187,12 +190,14 @@ def agent(
         ctx_note += f" · 맵 {len(rm.entries)}파일"
     if refs:
         ctx_note += f" · 첨부 {', '.join(refs)}"
-    console.print(
-        f"[dim]모델 {backend.model} · 도구 {', '.join(tools.names())} · "
-        f"모드 {approval_mode.value}{' · yolo' if yolo else ''} · 루트 {ctx.root}{ctx_note}[/dim]"
-    )
+    if not as_json:
+        console.print(
+            f"[dim]모델 {backend.model} · 도구 {', '.join(tools.names())} · "
+            f"모드 {approval_mode.value}{' · yolo' if yolo else ''} · "
+            f"루트 {ctx.root}{ctx_note}[/dim]"
+        )
     resolved_compact = compact_at or int((load_config().context or 32000) * 0.7)
-    handler = make_event_printer()
+    handler = (lambda _ev: None) if as_json else make_event_printer()
     ag = Agent(
         backend,
         tools,
@@ -245,6 +250,38 @@ def agent(
                         f"[yellow]백그라운드 프로세스 {len(left)}개 정리 중…[/yellow]"
                     )
                     procman.stop_all()
+        if as_json:
+            import json as _json
+            import subprocess as _sp
+
+            changed = _sp.run(
+                ["git", "-C", str(ctx.root), "diff", "--name-only", "HEAD"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+            ).stdout.split()
+            print(
+                _json.dumps(
+                    {
+                        "ok": result.ok,
+                        "final_text": result.final_text,
+                        "stop_reason": result.stop_reason,
+                        "steps": result.steps,
+                        "tokens": {
+                            "prompt": result.usage.prompt_tokens,
+                            "completion": result.usage.completion_tokens,
+                            "total": result.usage.total_tokens,
+                        },
+                        "changed_files": changed,
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            return 0 if result.ok else 1
+
         console.print()
         console.rule("[bold]결과[/bold]")
         console.print(result.final_text or "(빈 응답)", markup=False)

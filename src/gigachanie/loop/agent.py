@@ -113,6 +113,7 @@ class Agent:
 
         stop: StopReason = "max_steps"
         final_text = ""
+        self._usage = Usage()  # 이 run() 동안의 사용량
 
         for step in range(1, self.max_steps + 1):
             emit(AgentEvent(kind="step", step=step))

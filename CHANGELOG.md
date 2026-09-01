@@ -27,6 +27,8 @@
 - git 도우미 — `giga commit`(AGENTS.md/CONTRIBUTING.md 의 git 규칙을 반영해 모델이 커밋 메시지 생성, `-a`/`-m`/`--push`), `giga pr`(커밋 범위로 PR 제목/본문 초안, `gh` 있으면 `--create`) (#22)
 - 커스텀 슬래시 명령 — `.agent/commands/<이름>.md` 를 `chat` 에서 `/이름 인자` 로 실행 (`$ARGUMENTS`·`{{args}}`·`$1..` 치환). `/commands` 로 목록 (#19)
 - 훅 — `.agent/hooks.yaml` 로 `pre_tool`(종료코드≠0 이면 도구 차단)·`post_tool`·`session_start`·`stop` 에서 셸 명령 실행 (#19)
+- `giga agent --json` — 결과를 JSON(ok·final_text·stop_reason·steps·tokens·changed_files)으로 출력, 진행 소음 억제. CI 용 (#21b)
+- 토큰 사용량 — `chat` 이 매 턴 후 토큰(이번/누적) 표시, `/cost` 로 세션 누적 확인 (#21b)
 
 ### 변경
 - `agent`/`chat` 의 `--mode` 기본값이 `suggest` 고정 → permissions.yaml 의 `mode` 값 (없으면 suggest)

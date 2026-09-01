@@ -52,6 +52,7 @@ _HELP = """\
   /undo              마지막 편집 턴을 되돌림
   /ps                실행 중인 백그라운드 프로세스 목록
   /commands          .agent/commands/*.md 커스텀 명령 목록
+  /cost              이 세션 누적 토큰 사용량
   /clear             대화 맥락 초기화 (모델·설정 유지)
   /steps <N>         최대 스텝 변경
   /info              현재 세션 상태
@@ -95,6 +96,8 @@ class ChatSession:
         self.checkpoints = CheckpointStore(root)
         self.procman = ProcessManager(root)
         self.perms = load_permissions(root)
+        self.usage_prompt = 0
+        self.usage_completion = 0
         self.hooks = HookRunner.load(root)
         self.custom_commands = load_custom_commands(root)
         self.sessions = SessionStore(root)
@@ -199,6 +202,12 @@ class ChatSession:
             self._cmd_ps()
         elif cmd == "/commands":
             self._cmd_commands()
+        elif cmd == "/cost":
+            total = self.usage_prompt + self.usage_completion
+            console.print(
+                f"이 세션 누적 토큰: 입력 {self.usage_prompt} / 출력 "
+                f"{self.usage_completion} / 합계 {total}"
+            )
         elif cmd == "/steps":
             self._cmd_steps(args)
         else:
@@ -330,12 +339,16 @@ async def _run_turn(session: ChatSession, text: str) -> None:
         console.print("\n[yellow]중단됨[/yellow]")
         session._persist()
         return
+    session.usage_prompt += result.usage.prompt_tokens
+    session.usage_completion += result.usage.completion_tokens
     session._persist()
     console.print()
     console.rule("[bold]답변[/bold]")
     console.print(result.final_text or "(빈 응답)", markup=False)
     console.print(
-        f"[dim]스텝 {result.steps} · {result.stop_reason} · 토큰 {result.usage.total_tokens}[/dim]"
+        f"[dim]스텝 {result.steps} · {result.stop_reason} · "
+        f"토큰 {result.usage.total_tokens} (누적 "
+        f"{session.usage_prompt + session.usage_completion})[/dim]"
     )
 
 
