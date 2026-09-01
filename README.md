@@ -30,6 +30,8 @@ pytest
 
 ## 문서
 
+- [사용 설명서 (HTML)](docs/manual.html) — 명령·도구·설정 레퍼런스
+- [변경 이력](CHANGELOG.md)
 - [기능 명세 · 진행 체크리스트](docs/기능명세.md)
 - [아키텍처](docs/아키텍처.md)
 - [로드맵](docs/로드맵.md)

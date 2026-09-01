@@ -1,0 +1,787 @@
+<title>GigaChanie 매뉴얼</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --ground: #f6f6f3;
+    --surface: #ffffff;
+    --surface-2: #f0efe9;
+    --ink: #1b1c20;
+    --muted: #5b5e6b;
+    --border: #e4e3dc;
+    --accent: #a4670f;
+    --accent-strong: #6b4208;
+    --accent-soft: #f7efdd;
+    --ok: #3f7d53;
+    --warn: #a4670f;
+    --danger: #b23f34;
+    --code-bg: #f2f1ea;
+    --sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #151619;
+      --surface: #1d1f24;
+      --surface-2: #24262c;
+      --ink: #e9e9e4;
+      --muted: #9b9ea9;
+      --border: #2d2f36;
+      --accent: #e3a952;
+      --accent-strong: #f0c584;
+      --accent-soft: #2a2216;
+      --ok: #6bbf87;
+      --warn: #e3a952;
+      --danger: #e07a6e;
+      --code-bg: #23252b;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #151619;
+    --surface: #1d1f24;
+    --surface-2: #24262c;
+    --ink: #e9e9e4;
+    --muted: #9b9ea9;
+    --border: #2d2f36;
+    --accent: #e3a952;
+    --accent-strong: #f0c584;
+    --accent-soft: #2a2216;
+    --ok: #6bbf87;
+    --warn: #e3a952;
+    --danger: #e07a6e;
+    --code-bg: #23252b;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 2rem; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 clamp(1rem, 4vw, 3rem);
+  }
+
+  /* ---------- header ---------- */
+  header.masthead {
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .masthead__inner {
+    padding: clamp(2.4rem, 6vw, 4rem) 0 clamp(1.8rem, 4vw, 2.6rem);
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.9rem;
+  }
+  h1 {
+    font-size: clamp(2rem, 5vw, 3rem);
+    line-height: 1.1;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.8rem;
+    text-wrap: balance;
+  }
+  .lede {
+    font-size: clamp(1.02rem, 2.2vw, 1.2rem);
+    color: var(--muted);
+    max-width: 60ch;
+    margin: 0 0 1.6rem;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.4rem;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .meta b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- layout ---------- */
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3rem;
+    padding: clamp(2rem, 5vw, 3.5rem) 0 5rem;
+  }
+  @media (min-width: 940px) {
+    .layout { grid-template-columns: 220px minmax(0, 1fr); gap: 4rem; }
+  }
+
+  nav.toc {
+    align-self: start;
+    font-size: 0.9rem;
+  }
+  @media (min-width: 940px) {
+    nav.toc { position: sticky; top: 2rem; max-height: calc(100vh - 4rem); overflow-y: auto; }
+  }
+  nav.toc p {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 0.8rem;
+  }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  nav.toc li { margin: 0.15rem 0; }
+  nav.toc a {
+    display: block;
+    padding: 0.32rem 0.6rem;
+    border-radius: 6px;
+    color: var(--muted);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+  }
+  nav.toc a::before {
+    counter-increment: toc;
+    content: counter(toc, decimal-leading-zero) "  ";
+    font-family: var(--mono);
+    font-size: 0.78em;
+    color: var(--accent);
+  }
+  nav.toc a:hover { color: var(--ink); background: var(--surface-2); }
+  nav.toc a.active { color: var(--ink); border-left-color: var(--accent); background: var(--surface-2); }
+
+  main { min-width: 0; }
+
+  section { margin-bottom: 3.5rem; scroll-margin-top: 2rem; }
+  section > h2 {
+    font-size: clamp(1.4rem, 3vw, 1.7rem);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 0.4rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border);
+  }
+  section > h2::before {
+    content: "› ";
+    color: var(--accent);
+    font-family: var(--mono);
+  }
+  .section-note { color: var(--muted); margin: 0 0 1.6rem; max-width: 65ch; }
+
+  h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 2rem 0 0.6rem;
+  }
+  p { max-width: 68ch; }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+  /* ---------- code ---------- */
+  code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--code-bg);
+    padding: 0.12em 0.38em;
+    border-radius: 4px;
+  }
+  .scroll-x { overflow-x: auto; }
+  pre {
+    font-family: var(--mono);
+    font-size: 0.84rem;
+    line-height: 1.6;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    margin: 1rem 0;
+    overflow-x: auto;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  pre .c { color: var(--muted); }
+  pre .p { color: var(--accent); }
+
+  /* ---------- command card ---------- */
+  .cmd {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 1.4rem 0;
+    background: var(--surface);
+  }
+  .cmd__line {
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    font-weight: 500;
+    background: var(--code-bg);
+    padding: 0.8rem 1.1rem;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .cmd__line .sig { color: var(--accent-strong); }
+  .cmd__body { padding: 1rem 1.1rem; }
+  .cmd__body > p:first-child { margin-top: 0; }
+  .cmd__body > :last-child { margin-bottom: 0; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin: 0.8rem 0;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.5rem 0.7rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  td code { white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    padding: 0.14em 0.5em;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    vertical-align: middle;
+  }
+  .tag--ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, var(--border)); }
+  .tag--warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, var(--border)); }
+  .tag--danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--border)); }
+
+  .callout {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    margin: 1.3rem 0;
+    font-size: 0.92rem;
+  }
+  .callout p { margin: 0.3rem 0; max-width: none; }
+  .callout p:first-child { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout b { color: var(--accent-strong); }
+
+  ul.clean { padding-left: 1.2rem; }
+  ul.clean li { margin: 0.3rem 0; }
+
+  .grid-2 {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    margin: 1.2rem 0;
+  }
+  .card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    background: var(--surface);
+  }
+  .card h4 {
+    margin: 0 0 0.4rem;
+    font-size: 0.95rem;
+    font-family: var(--mono);
+  }
+  .card p { margin: 0; font-size: 0.88rem; color: var(--muted); max-width: none; }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2rem 0 3rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 0.4rem 1.4rem; }
+</style>
+
+<header class="masthead">
+  <div class="wrap masthead__inner">
+    <p class="eyebrow">사용 설명서 · Command Reference</p>
+    <h1>GigaChanie</h1>
+    <p class="lede">
+      Qwen · Llama · DeepSeek 같은 오픈 웨이트 LLM으로 동작하는 터미널 코딩 에이전트.
+      프로젝트를 읽고, 파일을 편집하고, 명령을 실행하고, 웹을 검색합니다.
+    </p>
+    <div class="meta">
+      <span><b>버전</b> 0.0.1</span>
+      <span><b>최종 업데이트</b> 2026-09-01</span>
+      <span><b>반영 범위</b> 이슈 #1–#20, #24</span>
+      <span><b>실행 명령</b> <code>giga</code></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap layout">
+  <nav class="toc" aria-label="목차">
+    <p>목차</p>
+    <ol id="toc-list">
+      <li><a href="#overview">개요</a></li>
+      <li><a href="#install">설치</a></li>
+      <li><a href="#quickstart">빠른 시작</a></li>
+      <li><a href="#doctor">giga doctor</a></li>
+      <li><a href="#model">giga model</a></li>
+      <li><a href="#ping-ask">giga ping · ask</a></li>
+      <li><a href="#agent">giga agent</a></li>
+      <li><a href="#chat">giga chat</a></li>
+      <li><a href="#init">giga init</a></li>
+      <li><a href="#tools">도구</a></li>
+      <li><a href="#approval">승인 모드</a></li>
+      <li><a href="#models">모델 &amp; 백엔드</a></li>
+      <li><a href="#context">컨텍스트 &amp; @참조</a></li>
+      <li><a href="#config">설정</a></li>
+      <li><a href="#dev">개발</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="overview">
+      <h2>개요</h2>
+      <p class="section-note">
+        GigaChanie는 상용 API 없이 로컬 또는 자가 호스팅한 오픈 모델 위에서 도는 코딩 에이전트입니다.
+        에이전트 루프가 도구를 호출해 코드베이스를 조사하고 수정하며, 모든 쓰기·실행·네트워크 동작은
+        승인 정책을 통과합니다.
+      </p>
+      <div class="grid-2">
+        <div class="card">
+          <h4>doctor</h4>
+          <p>OS·CPU·RAM·GPU를 감지해 이 장비에서 돌릴 수 있는 모델을 추천합니다.</p>
+        </div>
+        <div class="card">
+          <h4>agent / chat</h4>
+          <p>단발 실행과 대화형 REPL. 읽기 도구는 항상, 쓰기·웹 도구는 플래그로 켭니다.</p>
+        </div>
+        <div class="card">
+          <h4>apply_edit</h4>
+          <p>SEARCH/REPLACE 방식 편집. 정확→공백무시→들여쓰기유연 순으로 매칭합니다.</p>
+        </div>
+        <div class="card">
+          <h4>AGENTS.md</h4>
+          <p>프로젝트 규칙을 매 세션 자동으로 읽습니다. <code>giga init</code>이 초안을 만듭니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="install">
+      <h2>설치</h2>
+      <p class="section-note">Python 3.11 이상이 필요합니다. 로컬 모델을 쓰려면 별도로
+        <a href="https://ollama.com">Ollama</a>를 설치하세요.</p>
+      <pre><code><span class="c"># 저장소에서 편집 가능 모드로 설치</span>
+python -m pip install -e ".[dev]"
+
+<span class="c"># 확인</span>
+giga --version
+giga --help</code></pre>
+      <p>설치하면 <code>giga</code> 명령이 생깁니다. <code>python -m gigachanie</code> 로도 실행됩니다.</p>
+    </section>
+
+    <section id="quickstart">
+      <h2>빠른 시작</h2>
+      <p class="section-note">장비 진단 → 모델 선택(자동 다운로드) → 대화 시작.</p>
+      <pre><code><span class="p">giga</span> doctor                              <span class="c"># 장비에 맞는 모델 추천</span>
+<span class="p">giga</span> model use qwen3-coder-30b-a3b-instruct <span class="c"># 선택 + 가중치 자동 다운로드</span>
+<span class="p">giga</span> ping                                <span class="c"># 백엔드 연결 확인</span>
+
+<span class="c"># 읽기 전용으로 코드베이스 질문</span>
+<span class="p">giga</span> agent "이 프로젝트 구조를 설명해줘"
+
+<span class="c"># 편집까지 (대화형, 각 변경 승인)</span>
+<span class="p">giga</span> chat -w</code></pre>
+      <div class="callout">
+        <p><b>참고</b> 실제 모델 호출에는 Ollama 실행과 모델 다운로드가 필요합니다.
+          <code>giga model use</code>는 모델이 없으면 자동으로 받습니다(대화형에서는 먼저 확인).</p>
+      </div>
+    </section>
+
+    <section id="doctor">
+      <h2>giga doctor</h2>
+      <p class="section-note">OS·CPU·RAM·GPU(VRAM)와 사용 가능한 로컬 백엔드를 감지하고,
+        모델별로 확보 가능한 컨텍스트 길이를 KV 캐시 공식으로 계산해 적합도·속도와 함께 표로 보여줍니다.</p>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga doctor</span> [--all] [--json] [--top N]</div>
+        <div class="cmd__body">
+          <table>
+            <thead><tr><th>옵션</th><th>설명</th></tr></thead>
+            <tbody>
+              <tr><td><code>--all</code>, <code>-a</code></td><td>실행 불가한 모델도 이유와 함께 표시</td></tr>
+              <tr><td><code>--json</code></td><td>결과를 JSON으로 출력 (스크립트용)</td></tr>
+              <tr><td><code>--top</code>, <code>-n</code></td><td>표시할 추천 모델 수 (기본 8)</td></tr>
+            </tbody>
+          </table>
+          <p>메모리 예산은 통합 메모리(Apple Silicon)·VRAM(외장 GPU)·시스템 RAM(CPU 전용)을 구분해 산출합니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="model">
+      <h2>giga model</h2>
+      <p class="section-note">모델 후보 조회, 선택, 다운로드. 선택 정보는
+        <code>~/.config/gigachanie/config.yaml</code>에 저장됩니다.</p>
+
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga model list</span> [--family NAME] [--kind KIND] [--fit]</div>
+        <div class="cmd__body">
+          <p>레지스트리의 모델 25종을 표로 표시하고, 이 장비에서의 적합도를 함께 보여줍니다.</p>
+          <table>
+            <tbody>
+              <tr><td><code>--family</code>, <code>-f</code></td><td>계열 필터: <code>qwen</code>, <code>llama</code>, <code>deepseek</code>, <code>mistral</code> …</td></tr>
+              <tr><td><code>--kind</code>, <code>-k</code></td><td>종류 필터: <code>coder</code>, <code>general</code>, <code>reasoning</code></td></tr>
+              <tr><td><code>--fit</code></td><td>실행 가능한 모델만 표시</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga model use</span> &lt;ID&gt; [--backend B] [--base-url URL] [--quant Q] [--context N] [--pull] [--no-pull]</div>
+        <div class="cmd__body">
+          <p>사용할 모델을 선택합니다. ollama 백엔드에서 모델이 없으면 <b>가중치를 자동 다운로드</b>합니다
+            (대화형 터미널에서는 먼저 확인, 비대화 환경에서는 바로).</p>
+          <table>
+            <tbody>
+              <tr><td><code>--backend</code>, <code>-b</code></td><td><code>ollama</code> 또는 <code>openai_compat</code></td></tr>
+              <tr><td><code>--base-url</code></td><td>openai_compat 엔드포인트 (예: <code>http://localhost:8000/v1</code>)</td></tr>
+              <tr><td><code>--quant</code>, <code>-q</code></td><td>양자화 이름 (예: <code>q4_K_M</code>)</td></tr>
+              <tr><td><code>--context</code>, <code>-c</code></td><td>컨텍스트 길이(토큰)</td></tr>
+              <tr><td><code>--pull</code>, <code>-p</code></td><td>다운로드 실패 시 오류로 종료 (강제)</td></tr>
+              <tr><td><code>--no-pull</code></td><td>받지 않고 설정만 저장</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga model show</span></div>
+        <div class="cmd__body"><p>현재 선택된 모델·백엔드·설정 파일 경로를 표시합니다.</p></div>
+      </div>
+
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga model pull</span> [ID]</div>
+        <div class="cmd__body"><p>선택된(또는 지정한) 모델을 <code>ollama pull</code>로 내려받습니다.</p></div>
+      </div>
+    </section>
+
+    <section id="ping-ask">
+      <h2>giga ping · giga ask</h2>
+
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga ping</span></div>
+        <div class="cmd__body"><p>선택된 백엔드/모델에 연결이 되는지, 모델이 로드 가능한지 확인합니다.</p></div>
+      </div>
+
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga ask</span> "질문" [--system S] [--temperature T] [--max-tokens N] [--no-stream]</div>
+        <div class="cmd__body">
+          <p>도구 없이 모델에 한 번 질문하고 답을 스트리밍합니다. 질문을 생략하면 표준입력에서 읽습니다
+            (<code>cat prompt.txt | giga ask</code>).</p>
+          <table>
+            <tbody>
+              <tr><td><code>--system</code>, <code>-s</code></td><td>시스템 프롬프트</td></tr>
+              <tr><td><code>--temperature</code>, <code>-t</code></td><td>샘플링 온도 (기본 0.0)</td></tr>
+              <tr><td><code>--max-tokens</code>, <code>-m</code></td><td>최대 출력 토큰 (0 = 제한 없음)</td></tr>
+              <tr><td><code>--no-stream</code></td><td>스트리밍 비활성화</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="agent">
+      <h2>giga agent</h2>
+      <p class="section-note">에이전트 루프를 한 번 실행합니다. 읽기 도구는 항상 켜져 있고,
+        <code>--write</code>로 편집·셸을, <code>--web</code>로 웹 도구를 추가합니다.</p>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga agent</span> "작업" [-C DIR] [-w] [--web] [--mode M] [--yolo] [--max-steps N] [-t T] [--no-context]</div>
+        <div class="cmd__body">
+          <table>
+            <tbody>
+              <tr><td><code>--root</code>, <code>-C</code></td><td>작업 루트 디렉터리 (기본 현재 위치)</td></tr>
+              <tr><td><code>--write</code>, <code>-w</code></td><td><code>write_file</code>, <code>apply_edit</code>, <code>run_shell</code> 활성화</td></tr>
+              <tr><td><code>--web</code></td><td><code>web_search</code>, <code>web_fetch</code> 활성화</td></tr>
+              <tr><td><code>--mode</code></td><td>승인 모드: <code>suggest</code> · <code>auto-edit</code> · <code>full-auto</code></td></tr>
+              <tr><td><code>--yolo</code></td><td><code>full-auto</code> + <code>--write</code>. 확인 없이 전부 실행 <span class="tag tag--danger">주의</span></td></tr>
+              <tr><td><code>--max-steps</code></td><td>최대 반복 스텝 (기본 20)</td></tr>
+              <tr><td><code>--temperature</code>, <code>-t</code></td><td>샘플링 온도</td></tr>
+              <tr><td><code>--no-context</code></td><td>AGENTS.md 등 프로젝트 컨텍스트를 읽지 않음</td></tr>
+            </tbody>
+          </table>
+          <pre><code><span class="p">giga</span> agent -w --mode auto-edit "모든 함수에 타입 힌트를 추가해줘"
+<span class="p">giga</span> agent --web "httpx 최신 버전 마이그레이션 가이드를 찾아서 적용해줘"
+<span class="p">giga</span> agent "이 @src/loop/agent.py 의 반복 가드 로직을 설명해줘"</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="chat">
+      <h2>giga chat</h2>
+      <p class="section-note">대화 맥락을 유지하는 REPL. 입력 히스토리가 저장되고,
+        슬래시 명령으로 모델·모드·도구를 즉석에서 바꿉니다.</p>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga chat</span> [-C DIR] [-w] [--web] [--mode M] [--max-steps N] [-t T] [--no-context]</div>
+        <div class="cmd__body">
+          <p>옵션은 <code>giga agent</code>와 같습니다. 세션 중 슬래시 명령:</p>
+          <table>
+            <thead><tr><th>명령</th><th>동작</th></tr></thead>
+            <tbody>
+              <tr><td><code>/help</code></td><td>명령 목록</td></tr>
+              <tr><td><code>/tools</code></td><td>현재 등록된 도구</td></tr>
+              <tr><td><code>/model [ID]</code></td><td>현재 모델 표시 / 변경 (맥락 유지)</td></tr>
+              <tr><td><code>/mode &lt;모드&gt;</code></td><td>승인 모드 변경</td></tr>
+              <tr><td><code>/write on|off</code></td><td>쓰기·실행 도구 토글</td></tr>
+              <tr><td><code>/web on|off</code></td><td>웹 도구 토글</td></tr>
+              <tr><td><code>/steps &lt;N&gt;</code></td><td>최대 스텝 변경</td></tr>
+              <tr><td><code>/clear</code></td><td>대화 맥락 초기화 (설정 유지)</td></tr>
+              <tr><td><code>/info</code></td><td>현재 세션 상태</td></tr>
+              <tr><td><code>/exit</code>, <code>/quit</code></td><td>종료 (Ctrl-D 도 가능)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="init">
+      <h2>giga init</h2>
+      <p class="section-note">리포를 훑어 언어 구성·빌드/테스트/린트 명령·디렉터리·git 원격을 감지하고
+        <code>AGENTS.md</code> 초안을 만듭니다.</p>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga init</span> [-C DIR] [--force] [--show]</div>
+        <div class="cmd__body">
+          <table>
+            <tbody>
+              <tr><td><code>--root</code>, <code>-C</code></td><td>대상 디렉터리</td></tr>
+              <tr><td><code>--force</code>, <code>-f</code></td><td>기존 AGENTS.md 덮어쓰기</td></tr>
+              <tr><td><code>--show</code></td><td>파일로 쓰지 않고 출력만</td></tr>
+            </tbody>
+          </table>
+          <p>감지 대상: <code>pyproject.toml</code>, <code>package.json</code>, <code>Cargo.toml</code>,
+            <code>go.mod</code>, <code>Makefile</code>. 생성 후 반드시 내용을 검토하세요.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="tools">
+      <h2>도구</h2>
+      <p class="section-note">에이전트가 호출하는 도구. 읽기 도구는 기본, 나머지는 플래그로 활성화합니다.</p>
+
+      <h3>읽기 <span class="tag tag--ok">항상</span></h3>
+      <table>
+        <thead><tr><th>도구</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><code>list_dir</code></td><td>디렉터리 목록 (빌드 산출물·VCS 디렉터리 제외)</td></tr>
+          <tr><td><code>read_file</code></td><td>행 번호와 함께 읽기, 행 범위 지정 가능, 200KB 초과 시 잘림</td></tr>
+          <tr><td><code>glob</code></td><td>패턴으로 파일 찾기 (<code>**/*.py</code>)</td></tr>
+          <tr><td><code>grep</code></td><td>정규식으로 내용 검색, glob으로 대상 좁히기</td></tr>
+        </tbody>
+      </table>
+
+      <h3>쓰기 · 실행 <span class="tag tag--warn">--write / -w</span></h3>
+      <table>
+        <thead><tr><th>도구</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><code>write_file</code></td><td>파일 전체 쓰기. 승인 시 diff 표시, 내용 동일하면 no-op</td></tr>
+          <tr><td><code>apply_edit</code></td><td>부분 수정. <code>search</code>를 찾아 <code>replace</code>로 교체. <code>search</code>가 빈 문자열이면 새 파일 생성</td></tr>
+          <tr><td><code>run_shell</code></td><td>셸 명령 실행 (Windows=PowerShell, 그 외=sh). 타임아웃 최대 600초, 종료코드 반환</td></tr>
+        </tbody>
+      </table>
+
+      <h3>웹 <span class="tag tag--warn">--web</span></h3>
+      <table>
+        <thead><tr><th>도구</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><code>web_search</code></td><td>기본 DuckDuckGo(키 불필요). <code>GIGA_SEARCH_URL</code> 설정 시 SearXNG</td></tr>
+          <tr><td><code>web_fetch</code></td><td>URL → 본문 텍스트 (HTML에서 스크립트·스타일 제거), 20KB 제한</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <p>경로 도구는 작업 루트 밖을 벗어날 수 없습니다. 위험한 셸 명령
+          (<code>rm -rf /</code>, <code>mkfs</code>, fork bomb 등)은 승인 모드와 무관하게 차단됩니다.</p>
+      </div>
+    </section>
+
+    <section id="approval">
+      <h2>승인 모드</h2>
+      <p class="section-note">쓰기·실행·네트워크 동작은 실행 전에 정책을 통과해야 합니다.</p>
+      <table>
+        <thead><tr><th>모드</th><th>파일 편집</th><th>셸 실행</th><th>웹 요청</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>suggest</code> <span class="tag">기본</span></td>
+            <td>확인</td><td>확인 (허용 목록 제외)</td><td>확인</td>
+          </tr>
+          <tr>
+            <td><code>auto-edit</code></td>
+            <td>자동</td><td>확인 (허용 목록 제외)</td><td>확인</td>
+          </tr>
+          <tr>
+            <td><code>full-auto</code></td>
+            <td>자동</td><td>자동 (거부 목록 제외)</td><td>자동</td>
+          </tr>
+        </tbody>
+      </table>
+      <ul class="clean">
+        <li><b>허용 목록</b> — <code>git status</code>, <code>pytest</code>, <code>ruff</code> 등 안전한 읽기성 명령은 모드와 무관하게 자동 승인.</li>
+        <li><b>거부 목록</b> — 파괴적 명령은 모드와 무관하게 차단.</li>
+        <li><code>--yolo</code> — <code>full-auto</code> + <code>--write</code> 를 한 번에. 확인 창이 전혀 뜨지 않습니다.</li>
+        <li>승인 거부는 오류가 아니라 모델에게 피드백으로 전달되어 다른 방법을 찾게 합니다.</li>
+      </ul>
+    </section>
+
+    <section id="models">
+      <h2>모델 &amp; 백엔드</h2>
+      <p class="section-note">레지스트리에 25종이 등록돼 있습니다. Qwen · Llama · DeepSeek · GLM ·
+        Mistral(Codestral · Devstral) · Gemma · Phi · StarCoder2 · Yi-Coder · Granite · Kimi 등.</p>
+
+      <h3>백엔드</h3>
+      <table>
+        <thead><tr><th>백엔드</th><th>대상</th><th>비고</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>ollama</code></td>
+            <td>로컬 (기본)</td>
+            <td><code>/api/chat</code> 사용, 컨텍스트 길이·keep_alive 제어, 네이티브 툴콜</td>
+          </tr>
+          <tr>
+            <td><code>openai_compat</code></td>
+            <td>llama.cpp · MLX · vLLM · 호스팅 API</td>
+            <td><code>--base-url</code> 필요. SSE 스트리밍</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <p>툴콜을 네이티브로 지원하지 않는 모델은 시스템 프롬프트에 규약을 주입하는
+          <b>프롬프트형 폴백</b>으로 처리됩니다 (레지스트리의 <code>tool_calling</code> 값).</p>
+      </div>
+
+      <h3>32GB Mac 기준 추천</h3>
+      <table>
+        <thead><tr><th>모델</th><th>특징</th></tr></thead>
+        <tbody>
+          <tr><td><code>qwen3-coder-30b-a3b-instruct</code></td><td>MoE 활성 3B. 속도·컨텍스트 효율 좋음 — 1순위</td></tr>
+          <tr><td><code>devstral-small-2507</code></td><td>에이전트형 코딩 특화 (24B)</td></tr>
+          <tr><td><code>qwen2.5-coder-14b-instruct</code></td><td>안전한 기본값</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="context">
+      <h2>컨텍스트 &amp; @참조</h2>
+
+      <h3>프로젝트 컨텍스트 파일</h3>
+      <p>에이전트는 매 세션 프로젝트 규칙을 자동으로 읽습니다. 인식 파일 (우선순위 순):</p>
+      <ul class="clean">
+        <li><code>AGENTS.md</code> (권장) → <code>GEMINI.md</code> → <code>CLAUDE.md</code> → <code>.agent/context.md</code></li>
+      </ul>
+      <p>계층 병합: 전역(<code>~/.config/gigachanie/AGENTS.md</code>) → 프로젝트 루트 → 작업 하위 디렉터리
+        순서로 합쳐집니다 (총 12KB 상한). <code>--no-context</code>로 끌 수 있습니다.</p>
+
+      <h3>@파일 참조</h3>
+      <p>입력에 <code>@경로</code>를 쓰면 해당 파일 내용이 프롬프트에 첨부됩니다.
+        공백이 있으면 <code>@"경로 이름"</code>처럼 따옴표로 감쌉니다.</p>
+      <pre><code><span class="p">›</span> 이 @src/gigachanie/loop/edit.py 의 매칭 단계를 정리해줘</code></pre>
+    </section>
+
+    <section id="config">
+      <h2>설정</h2>
+      <p class="section-note">우선순위: 기본값 &lt; 사용자 설정 &lt; 프로젝트 설정 &lt; 환경변수.</p>
+
+      <h3>설정 파일</h3>
+      <table>
+        <tbody>
+          <tr><td><code>~/.config/gigachanie/config.yaml</code></td><td>사용자 전역 (<code>giga model use</code>가 씀)</td></tr>
+          <tr><td><code>&lt;프로젝트&gt;/.agent/config.yaml</code></td><td>프로젝트별 오버라이드</td></tr>
+        </tbody>
+      </table>
+      <p>필드: <code>model_id</code>, <code>backend</code>, <code>base_url</code>, <code>quant</code>, <code>context</code>.</p>
+
+      <h3>환경변수</h3>
+      <table>
+        <thead><tr><th>변수</th><th>용도</th></tr></thead>
+        <tbody>
+          <tr><td><code>GIGA_MODEL</code></td><td>모델 ID 오버라이드</td></tr>
+          <tr><td><code>GIGA_BACKEND</code></td><td><code>ollama</code> / <code>openai_compat</code></td></tr>
+          <tr><td><code>GIGA_BASE_URL</code></td><td>openai_compat 엔드포인트</td></tr>
+          <tr><td><code>GIGA_CONTEXT</code></td><td>컨텍스트 길이(토큰)</td></tr>
+          <tr><td><code>GIGA_API_KEY</code> / <code>OPENAI_API_KEY</code></td><td>호스팅 API 키</td></tr>
+          <tr><td><code>OLLAMA_HOST</code></td><td>Ollama 주소 (기본 <code>http://127.0.0.1:11434</code>)</td></tr>
+          <tr><td><code>GIGA_SEARCH_URL</code></td><td>SearXNG 검색 인스턴스</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="dev">
+      <h2>개발</h2>
+      <p class="section-note">모든 변경은 테스트·린트·타입체크를 통과해야 합니다.</p>
+      <pre><code>python -m pytest        <span class="c"># 테스트 (실서버 없이 Mock으로 동작)</span>
+ruff check .            <span class="c"># 린트 (line-length 100)</span>
+mypy                    <span class="c"># 타입체크 (strict)</span></code></pre>
+      <p>디렉터리 개요:</p>
+      <table>
+        <tbody>
+          <tr><td><code>src/gigachanie/commands/</code></td><td>CLI 하위 명령</td></tr>
+          <tr><td><code>src/gigachanie/providers/</code></td><td>하드웨어 감지, 모델 레지스트리, 추천</td></tr>
+          <tr><td><code>src/gigachanie/serving/</code></td><td>백엔드 어댑터, 툴콜 파싱</td></tr>
+          <tr><td><code>src/gigachanie/loop/</code></td><td>에이전트 루프, 도구, 승인 정책, 편집 엔진</td></tr>
+          <tr><td><code>src/gigachanie/context/</code></td><td>프로젝트 컨텍스트, @참조 확장</td></tr>
+          <tr><td><code>docs/</code></td><td>기능명세(체크리스트), 아키텍처, 로드맵, 이슈목록, 이 매뉴얼</td></tr>
+        </tbody>
+      </table>
+      <p>자세한 내용은 저장소의 <code>docs/기능명세.md</code>와 <code>docs/아키텍처.md</code>를 보세요.</p>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>GigaChanie · 오픈 웨이트 LLM 코딩 에이전트</span>
+    <span>github.com/apg0001/GigaChanie</span>
+    <span>이 문서는 기능 변경 시마다 갱신됩니다.</span>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
+    var map = {};
+    links.forEach(function (a) {
+      var id = a.getAttribute('href').slice(1);
+      var el = document.getElementById(id);
+      if (el) map[id] = a;
+    });
+    if (!('IntersectionObserver' in window)) return;
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          links.forEach(function (l) { l.classList.remove('active'); });
+          var a = map[e.target.id];
+          if (a) a.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-10% 0px -80% 0px' });
+    Object.keys(map).forEach(function (id) {
+      var s = document.getElementById(id);
+      if (s) obs.observe(s);
+    });
+  })();
+</script>
