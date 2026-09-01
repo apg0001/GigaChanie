@@ -12,7 +12,12 @@ import typer
 from rich.console import Console
 
 from gigachanie.commands._agentui import interactive_approver, make_event_printer
-from gigachanie.context import build_repo_map, expand_file_refs, load_project_context
+from gigachanie.context import (
+    MemoryStore,
+    build_repo_map,
+    expand_file_refs,
+    load_project_context,
+)
 from gigachanie.loop.agent import Agent
 from gigachanie.loop.approval import ApprovalMode, ApprovalPolicy
 from gigachanie.loop.builtin_tools import build_registry
@@ -74,11 +79,14 @@ def agent(
 
     pc = None if no_context else load_project_context(ctx.root, Path.cwd())
     rm = None if no_map else build_repo_map(ctx.root, cwd=Path.cwd())
+    mem_index = "" if no_context else MemoryStore(ctx.root).index_text()
     task_text, refs = expand_file_refs(task_text, ctx.root)
 
     ctx_note = ""
     if pc and pc.found:
         ctx_note = f" · 컨텍스트 {', '.join(p.name for p in pc.sources)}"
+    if mem_index:
+        ctx_note += " · 메모리"
     if rm and rm.found:
         ctx_note += f" · 맵 {len(rm.entries)}파일"
     if refs:
@@ -94,6 +102,7 @@ def agent(
         ctx,
         project_context=pc.text if pc else None,
         repo_map=rm.text if rm else None,
+        memory_index=mem_index or None,
         max_steps=max_steps,
         temperature=temperature,
     )

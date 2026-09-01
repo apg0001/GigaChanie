@@ -13,10 +13,16 @@ from platformdirs import user_config_path
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
 from rich.console import Console
+from rich.markup import escape
 
 from gigachanie.commands._agentui import interactive_approver, make_event_printer
 from gigachanie.config import load_config
-from gigachanie.context import build_repo_map, expand_file_refs, load_project_context
+from gigachanie.context import (
+    MemoryStore,
+    build_repo_map,
+    expand_file_refs,
+    load_project_context,
+)
 from gigachanie.loop.agent import Agent
 from gigachanie.loop.approval import ApprovalMode, ApprovalPolicy
 from gigachanie.loop.builtin_tools import build_registry
@@ -34,6 +40,8 @@ _HELP = """\
   /mode <모드>       승인 모드: suggest | auto-edit | full-auto
   /write on|off      쓰기·실행 도구 토글
   /web on|off        웹 도구(web_search, web_fetch) 토글
+  /remember <내용>   장기 메모리에 저장 (제목은 앞 40자)
+  /memory            장기 메모리 목록
   /clear             대화 맥락 초기화 (모델·설정 유지)
   /steps <N>         최대 스텝 변경
   /info              현재 세션 상태
@@ -70,7 +78,13 @@ class ChatSession:
         rm = build_repo_map(root, cwd=root) if use_map else None
         self.repo_map = rm.text if rm and rm.found else None
         self.map_files = len(rm.entries) if rm else 0
+        self.memory_store = MemoryStore(root)
+        self._refresh_memory()
         self.agent = self._new_agent()
+
+    def _refresh_memory(self) -> None:
+        idx = self.memory_store.index_text() if self.use_context else ""
+        self.memory_index = idx or None
 
     def _new_agent(self) -> Agent:
         tools = build_registry(writable=self.writable, web=self.web)
@@ -82,6 +96,7 @@ class ChatSession:
             ctx,
             project_context=self.project_context,
             repo_map=self.repo_map,
+            memory_index=self.memory_index,
             max_steps=self.max_steps,
             temperature=self.temperature,
         )
@@ -119,6 +134,10 @@ class ChatSession:
             self._cmd_write(args)
         elif cmd == "/web":
             self._cmd_web(args)
+        elif cmd == "/remember":
+            self._cmd_remember(args)
+        elif cmd == "/memory":
+            self._cmd_memory()
         elif cmd == "/steps":
             self._cmd_steps(args)
         else:
@@ -178,6 +197,25 @@ class ChatSession:
         self.web = args[0] == "on"
         self.rebuild(keep_history=True)
         console.print(f"웹 도구: [cyan]{'on' if self.web else 'off'}[/cyan]")
+
+    def _cmd_remember(self, args: list[str]) -> None:
+        text = " ".join(args).strip()
+        if not text:
+            console.print("사용법: /remember <기억할 내용>")
+            return
+        title = text[:40] + ("…" if len(text) > 40 else "")
+        entry = self.memory_store.add(title, text)
+        self._refresh_memory()
+        self.rebuild(keep_history=True)
+        console.print(f"[green]기억함:[/green] {entry.slug}")
+
+    def _cmd_memory(self) -> None:
+        entries = self.memory_store.all_entries()
+        if not entries:
+            console.print("[dim]저장된 메모리 없음[/dim]")
+            return
+        for e in entries:
+            console.print(f"[bold]{e.slug}[/bold] — {escape(e.title)}")
 
     def _cmd_steps(self, args: list[str]) -> None:
         if not args or not args[0].isdigit():

@@ -10,6 +10,7 @@
 
 ### 추가
 - `giga map` — 저장소 심볼 맵 (심볼 추출 + 참조 랭킹). `agent`/`chat` 은 컨텍스트에 자동 주입, `--no-map` 으로 끔 (#11)
+- `giga memory add/list/show/search/rm` — 장기 메모리. `agent`/`chat` 은 목차를 컨텍스트에 주입하고 `read_memory`/`save_memory` 도구·`/remember`·`/memory` 로 접근 (#12)
 - `giga doctor` — OS/CPU/RAM/GPU 감지 후 실행 가능한 오픈모델 추천 (#3)
 - `giga model list / show / use / pull` — 모델 레지스트리 25종, 선택 시 가중치 자동 다운로드 (#3, #24)
 - `giga ask` / `giga ping` — 단발성 질의, 백엔드 연결 확인 (#4)
