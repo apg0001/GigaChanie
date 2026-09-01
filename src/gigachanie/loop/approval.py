@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Literal
 
-ActionKind = Literal["write", "shell", "delete"]
+ActionKind = Literal["write", "shell", "delete", "network"]
 
 
 class ApprovalMode(str, Enum):
@@ -79,6 +79,11 @@ class ApprovalPolicy:
                 return False, "거부 목록에 해당하는 명령입니다."
             if self._shell_listed(req.detail or req.summary, self.allow_shell):
                 return True, "허용 목록의 안전한 명령"
+            if self.mode is ApprovalMode.FULL_AUTO:
+                return True, "full-auto 모드"
+            return self._ask(req)
+
+        if req.kind == "network":
             if self.mode is ApprovalMode.FULL_AUTO:
                 return True, "full-auto 모드"
             return self._ask(req)
