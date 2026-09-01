@@ -1,0 +1,7 @@
+prompt: >
+  greet.py 파일을 새로 만들어줘. hello() 함수가 문자열 "Hello, World!" 를 반환해야 한다.
+max_steps: 10
+check:
+  - { type: file_present, path: "greet.py" }
+  - { type: file_contains, path: "greet.py", text: "Hello, World!" }
+  - { type: file_contains, path: "greet.py", text: "def hello" }

@@ -1,0 +1,7 @@
+prompt: >
+  test_mod.py 가 통과하도록 mod.py 를 고쳐줘. 테스트는 double(3) == 6 을 기대한다.
+  테스트 파일은 수정하지 말고 mod.py 만 고쳐라.
+max_steps: 15
+check:
+  - { type: shell, cmd: "python -m pytest -q", cwd: "." }
+  - { type: file_contains, path: "test_mod.py", text: "double(3) == 6" }
