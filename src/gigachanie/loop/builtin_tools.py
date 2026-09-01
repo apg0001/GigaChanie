@@ -83,8 +83,10 @@ async def _read_file(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
 
     numbered = "\n".join(f"{i:>6}\t{ln}" for i, ln in enumerate(selected, start=start))
     note = ""
+    if ctx.policy.path_denied(str(path).replace("\\", "/")):
+        note += "\n[주의: 민감정보일 수 있는 파일입니다. 내용을 요약·출력·전송하지 마세요.]"
     if truncated:
-        note = f"\n\n[{_MAX_READ_BYTES} 바이트에서 잘림]"
+        note += f"\n\n[{_MAX_READ_BYTES} 바이트에서 잘림]"
     if start > 1 or end < len(lines):
         note += f"\n[{start}-{end} 행 / 전체 {len(lines)} 행]"
     return ToolResult(content=(numbered or "(빈 파일)") + note)

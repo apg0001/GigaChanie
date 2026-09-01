@@ -20,11 +20,12 @@ from gigachanie.context import (
     load_project_context,
 )
 from gigachanie.loop.agent import Agent
-from gigachanie.loop.approval import ApprovalMode, ApprovalPolicy
+from gigachanie.loop.approval import ApprovalMode, build_policy
 from gigachanie.loop.builtin_tools import build_registry
 from gigachanie.loop.checkpoint import CheckpointStore
 from gigachanie.loop.procman import ProcessManager
 from gigachanie.loop.tools import ToolContext
+from gigachanie.permissions import load_permissions
 from gigachanie.serving.base import BackendError, run_sync
 from gigachanie.serving.factory import build_backend
 
@@ -41,7 +42,7 @@ def agent(
         False, "--web", help="웹 도구(web_search, web_fetch) 활성화."
     ),
     mode: str = typer.Option(
-        "suggest", "--mode", help="승인 모드: suggest | auto-edit | full-auto."
+        "", "--mode", help="승인 모드: suggest | auto-edit | full-auto (기본: 설정값 또는 suggest)."
     ),
     yolo: bool = typer.Option(
         False, "--yolo", help="full-auto + write. 확인 없이 전부 실행(주의)."
@@ -63,8 +64,11 @@ def agent(
 ) -> None:
     """도구를 사용해 코드베이스를 조사하거나 수정한다."""
     task_text = " ".join(task)
+    perms = load_permissions(root.resolve())
     try:
-        approval_mode = ApprovalMode.parse("full-auto" if yolo else mode)
+        approval_mode = ApprovalMode.parse(
+            "full-auto" if yolo else (mode or perms.mode or "suggest")
+        )
     except ValueError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=2) from None
@@ -77,9 +81,13 @@ def agent(
         raise typer.Exit(code=1) from None
 
     tools = build_registry(writable=writable, web=web)
-    policy = ApprovalPolicy(
-        mode=approval_mode,
-        approver=None if yolo else interactive_approver,
+    policy = build_policy(
+        approval_mode,
+        None if yolo else interactive_approver,
+        extra_allow_shell=perms.allow_shell,
+        extra_deny_shell=perms.deny_shell,
+        allow_paths=perms.allow_paths,
+        deny_paths=perms.effective_deny_paths(),
     )
     checkpoints = (
         CheckpointStore(root.resolve())

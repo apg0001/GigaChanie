@@ -24,11 +24,12 @@ from gigachanie.context import (
     load_project_context,
 )
 from gigachanie.loop.agent import Agent
-from gigachanie.loop.approval import ApprovalMode, ApprovalPolicy
+from gigachanie.loop.approval import ApprovalMode, build_policy
 from gigachanie.loop.builtin_tools import build_registry
 from gigachanie.loop.checkpoint import CheckpointStore
 from gigachanie.loop.procman import ProcessManager
 from gigachanie.loop.tools import ToolContext
+from gigachanie.permissions import load_permissions
 from gigachanie.serving.base import Backend, BackendError, run_sync
 from gigachanie.serving.factory import build_backend
 
@@ -88,6 +89,7 @@ class ChatSession:
         self.compact_at = int((load_config().context or 32000) * 0.7)
         self.checkpoints = CheckpointStore(root)
         self.procman = ProcessManager(root)
+        self.perms = load_permissions(root)
         self.agent = self._new_agent()
 
     def _refresh_memory(self) -> None:
@@ -96,7 +98,14 @@ class ChatSession:
 
     def _new_agent(self) -> Agent:
         tools = build_registry(writable=self.writable, web=self.web)
-        policy = ApprovalPolicy(mode=self.mode, approver=interactive_approver)
+        policy = build_policy(
+            self.mode,
+            interactive_approver,
+            extra_allow_shell=self.perms.allow_shell,
+            extra_deny_shell=self.perms.deny_shell,
+            allow_paths=self.perms.allow_paths,
+            deny_paths=self.perms.effective_deny_paths(),
+        )
         ctx = ToolContext(
             root=self.root,
             policy=policy,
@@ -291,7 +300,7 @@ def chat(
     root: Path = typer.Option(Path("."), "--root", "-C", help="작업 루트 디렉터리."),
     write: bool = typer.Option(False, "--write", "-w", help="쓰기/실행 도구 활성화."),
     web: bool = typer.Option(False, "--web", help="웹 도구 활성화."),
-    mode: str = typer.Option("suggest", "--mode", help="suggest | auto-edit | full-auto."),
+    mode: str = typer.Option("", "--mode", help="suggest | auto-edit | full-auto (기본: 설정값)."),
     max_steps: int = typer.Option(20, "--max-steps"),
     temperature: float = typer.Option(0.0, "--temperature", "-t"),
     no_context: bool = typer.Option(
@@ -300,13 +309,15 @@ def chat(
     no_map: bool = typer.Option(False, "--no-map", help="저장소 심볼 맵을 넣지 않는다."),
 ) -> None:
     """대화형으로 에이전트와 작업한다."""
+    root_path = root.resolve()
     try:
-        approval_mode = ApprovalMode.parse(mode)
+        approval_mode = ApprovalMode.parse(
+            mode or load_permissions(root_path).mode or "suggest"
+        )
     except ValueError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=2) from None
 
-    root_path = root.resolve()
     if not root_path.is_dir():
         console.print(f"[red]디렉터리가 아닙니다: {root}[/red]")
         raise typer.Exit(code=1)

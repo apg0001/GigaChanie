@@ -328,7 +328,7 @@
     <div class="meta">
       <span><b>버전</b> 0.0.1</span>
       <span><b>최종 업데이트</b> 2026-09-01</span>
-      <span><b>반영 범위</b> 이슈 #1–#14, #20, #24, #25, #26</span>
+      <span><b>반영 범위</b> 이슈 #1–#14, #20, #24, #25, #26 (#9·#12·#13 포함)</span>
       <span><b>실행 명령</b> <code>giga</code></span>
     </div>
   </div>
@@ -763,12 +763,28 @@ giga --help</code></pre>
         </tbody>
       </table>
       <ul class="clean">
-        <li><b>허용 목록</b> — <code>git status</code>, <code>pytest</code>, <code>ruff</code> 등 안전한 읽기성 명령은 모드와 무관하게 자동 승인.</li>
-        <li><b>거부 목록</b> — 파괴적 명령은 모드와 무관하게 차단.</li>
+        <li><b>셸 허용 목록</b> — <code>git status</code>, <code>pytest</code>, <code>ruff</code> 등 안전한 읽기성 명령은 모드와 무관하게 자동 승인.</li>
+        <li><b>셸 거부 목록</b> — 파괴적 명령은 모드와 무관하게 차단.</li>
+        <li><b>보호 경로</b> — <code>.env</code>, <code>*.pem</code>, <code>id_rsa*</code>, <code>.ssh/</code>, <code>.aws/</code>, <code>credentials*.json</code> 등은 모드와 무관하게 편집·생성이 차단되고, 읽을 때 경고가 붙습니다.</li>
+        <li><b>편집 허용 경로</b> — <code>permissions.yaml</code>의 <code>allow_paths</code>에 넣은 glob은 확인 없이 편집됩니다.</li>
         <li><code>--yolo</code> — <code>full-auto</code> + <code>--write</code> 를 한 번에. 확인 창이 전혀 뜨지 않습니다.</li>
         <li>승인 거부는 오류가 아니라 모델에게 피드백으로 전달되어 다른 방법을 찾게 합니다.</li>
         <li>쓰기 모드에서는 편집 직전 파일이 스냅샷되어 <a href="#undo"><code>giga undo</code></a>로 되돌릴 수 있습니다.</li>
       </ul>
+
+      <h3>permissions.yaml</h3>
+      <p>규칙은 <code>~/.config/gigachanie/permissions.yaml</code>(사용자) 위에
+        <code>&lt;root&gt;/.agent/permissions.yaml</code>(프로젝트)가 얹혀 병합됩니다.
+        <code>giga policy</code>로 병합 결과를 확인합니다.</p>
+      <pre><code><span class="c"># .agent/permissions.yaml</span>
+mode: auto-edit
+allow_paths:
+  - "src/**"
+deny_paths:
+  - "config/prod/**"
+deny_shell:
+  - "^git push"</code></pre>
+      <p><code>agent</code>/<code>chat</code>의 <code>--mode</code>는 이 <code>mode</code> 값을 덮어씁니다.</p>
     </section>
 
     <section id="models">
@@ -847,11 +863,13 @@ giga --help</code></pre>
       <h3>설정 파일</h3>
       <table>
         <tbody>
-          <tr><td><code>~/.config/gigachanie/config.yaml</code></td><td>사용자 전역 (<code>giga model use</code>가 씀)</td></tr>
-          <tr><td><code>&lt;프로젝트&gt;/.agent/config.yaml</code></td><td>프로젝트별 오버라이드</td></tr>
+          <tr><td><code>~/.config/gigachanie/config.yaml</code></td><td>모델 설정 (<code>giga model use</code>가 씀)</td></tr>
+          <tr><td><code>&lt;프로젝트&gt;/.agent/config.yaml</code></td><td>모델 설정 프로젝트 오버라이드</td></tr>
+          <tr><td><code>~/.config/gigachanie/permissions.yaml</code></td><td>승인 모드·권한 규칙 (<a href="#approval">승인 모드</a> 참고)</td></tr>
+          <tr><td><code>&lt;프로젝트&gt;/.agent/permissions.yaml</code></td><td>권한 규칙 프로젝트 오버라이드 · <code>giga policy</code>로 확인</td></tr>
         </tbody>
       </table>
-      <p>필드: <code>model_id</code>, <code>backend</code>, <code>base_url</code>, <code>quant</code>, <code>context</code>.</p>
+      <p>config 필드: <code>model_id</code>, <code>backend</code>, <code>base_url</code>, <code>quant</code>, <code>context</code>.</p>
 
       <h3>환경변수</h3>
       <table>
