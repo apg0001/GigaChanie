@@ -328,7 +328,7 @@
     <div class="meta">
       <span><b>버전</b> 0.0.1</span>
       <span><b>최종 업데이트</b> 2026-09-01</span>
-      <span><b>반영 범위</b> 이슈 #1–#14, #20, #24, #25, #26 (#9·#12·#13 포함)</span>
+      <span><b>반영 범위</b> 이슈 #1–#14, #20, #24, #25, #26, #27 (#9·#12·#13 포함)</span>
       <span><b>실행 명령</b> <code>giga</code></span>
     </div>
   </div>
@@ -433,6 +433,7 @@ giga --help</code></pre>
               <tr><td><code>--all</code>, <code>-a</code></td><td>실행 불가한 모델도 이유와 함께 표시</td></tr>
               <tr><td><code>--json</code></td><td>결과를 JSON으로 출력 (스크립트용)</td></tr>
               <tr><td><code>--top</code>, <code>-n</code></td><td>표시할 추천 모델 수 (기본 8)</td></tr>
+              <tr><td><code>--use</code>, <code>-u</code></td><td>진단 후 추천 목록에서 골라 바로 설정</td></tr>
             </tbody>
           </table>
           <p>메모리 예산은 통합 메모리(Apple Silicon)·VRAM(외장 GPU)·시스템 RAM(CPU 전용)을 구분해 산출합니다.</p>
@@ -460,10 +461,11 @@ giga --help</code></pre>
       </div>
 
       <div class="cmd">
-        <div class="cmd__line"><span class="sig">giga model use</span> &lt;ID&gt; [--backend B] [--base-url URL] [--quant Q] [--context N] [--pull] [--no-pull]</div>
+        <div class="cmd__line"><span class="sig">giga model use</span> [ID] [--backend B] [--base-url URL] [--quant Q] [--context N] [--pull] [--no-pull]</div>
         <div class="cmd__body">
-          <p>사용할 모델을 선택합니다. ollama 백엔드에서 모델이 없으면 <b>가중치를 자동 다운로드</b>합니다
-            (대화형 터미널에서는 먼저 확인, 비대화 환경에서는 바로).</p>
+          <p>사용할 모델을 선택합니다. <b>ID를 생략하면</b> 이 장비 적합도 순으로 정렬된
+            화살표 선택 목록이 뜹니다 (<code>giga doctor --use</code>도 진단 후 바로 선택). ollama
+            백엔드에서 모델이 없으면 <b>가중치를 자동 다운로드</b>합니다.</p>
           <table>
             <tbody>
               <tr><td><code>--backend</code>, <code>-b</code></td><td><code>ollama</code> 또는 <code>openai_compat</code></td></tr>
@@ -767,6 +769,8 @@ giga --help</code></pre>
         <li><b>셸 거부 목록</b> — 파괴적 명령은 모드와 무관하게 차단.</li>
         <li><b>보호 경로</b> — <code>.env</code>, <code>*.pem</code>, <code>id_rsa*</code>, <code>.ssh/</code>, <code>.aws/</code>, <code>credentials*.json</code> 등은 모드와 무관하게 편집·생성이 차단되고, 읽을 때 경고가 붙습니다.</li>
         <li><b>편집 허용 경로</b> — <code>permissions.yaml</code>의 <code>allow_paths</code>에 넣은 glob은 확인 없이 편집됩니다.</li>
+        <li><b>승인 프롬프트</b>는 3지선다입니다: <code>[y]</code> 실행 · <code>[n]</code> 건너뛰기 ·
+          <code>[a]</code> 항상 허용(해당 경로/명령 규칙을 <code>.agent/permissions.yaml</code>에 자동 기록).</li>
         <li><code>--yolo</code> — <code>full-auto</code> + <code>--write</code> 를 한 번에. 확인 창이 전혀 뜨지 않습니다.</li>
         <li>승인 거부는 오류가 아니라 모델에게 피드백으로 전달되어 다른 방법을 찾게 합니다.</li>
         <li>쓰기 모드에서는 편집 직전 파일이 스냅샷되어 <a href="#undo"><code>giga undo</code></a>로 되돌릴 수 있습니다.</li>

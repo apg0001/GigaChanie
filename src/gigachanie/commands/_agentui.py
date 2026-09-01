@@ -2,27 +2,78 @@
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable
+from pathlib import Path
 
 import typer
+import yaml
 from rich.console import Console
 from rich.syntax import Syntax
 
 from gigachanie.loop.agent import AgentEvent
-from gigachanie.loop.approval import ApprovalRequest
+from gigachanie.loop.approval import ApprovalRequest, Approver
 
 console = Console()
 
 
+def _remember_rule(root: Path, req: ApprovalRequest) -> None:
+    """'항상 허용' 선택 시 프로젝트 permissions.yaml 에 규칙을 추가한다."""
+    pf = root / ".agent" / "permissions.yaml"
+    pf.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        data = yaml.safe_load(pf.read_text("utf-8")) if pf.is_file() else {}
+    except (OSError, yaml.YAMLError):
+        data = {}
+    data = data or {}
+
+    if req.kind in ("write", "delete") and req.path:
+        rel = req.path.replace("\\", "/")
+        parent = rel.rsplit("/", 1)[0] if "/" in rel else ""
+        rule = f"{parent}/**" if parent else rel
+        added = data.setdefault("allow_paths", [])
+        target, kind = added, "allow_paths"
+    else:
+        raw = (req.detail or req.summary).strip()
+        first = raw.split()[0] if raw else ""
+        rule = f"^{first}\\b" if first else ""
+        added = data.setdefault("allow_shell", [])
+        target, kind = added, "allow_shell"
+
+    if rule and rule not in target:
+        target.append(rule)
+        pf.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=True), encoding="utf-8")
+        console.print(f"[dim]규칙 추가: {kind} += {rule}  ({pf})[/dim]")
+
+
+def make_approver(root: Path) -> Approver:
+    def approve(req: ApprovalRequest) -> bool:
+        console.print()
+        console.print(f"[yellow bold]승인 요청[/yellow bold] · {req.summary}")
+        if req.detail:
+            lexer = "diff" if req.kind == "write" else "bash"
+            console.print(
+                Syntax(req.detail[:4000], lexer, theme="ansi_dark", word_wrap=True)
+            )
+        if not (sys.stdin.isatty() and sys.stdout.isatty()):
+            return typer.confirm("실행할까요?", default=False)
+
+        choice = typer.prompt(
+            "[y] 실행  [n] 건너뛰기  [a] 항상 허용",
+            default="n",
+            show_default=False,
+        ).strip().lower()
+        if choice in ("a", "always"):
+            _remember_rule(root, req)
+            return True
+        return choice in ("y", "yes")
+
+    return approve
+
+
 def interactive_approver(req: ApprovalRequest) -> bool:
-    console.print()
-    console.print(f"[yellow bold]승인 요청[/yellow bold] · {req.summary}")
-    if req.detail:
-        lexer = "diff" if req.kind == "write" else "bash"
-        console.print(
-            Syntax(req.detail[:4000], lexer, theme="ansi_dark", word_wrap=True)
-        )
-    return typer.confirm("실행할까요?", default=False)
+    """root 없이 쓰는 단순 승인 (테스트/폴백용)."""
+    return make_approver(Path.cwd())(req)
 
 
 def make_event_printer() -> Callable[[AgentEvent], None]:

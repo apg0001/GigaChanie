@@ -11,7 +11,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from gigachanie.commands._agentui import interactive_approver, make_event_printer
+from gigachanie.commands._agentui import make_approver, make_event_printer
 from gigachanie.config import load_config
 from gigachanie.context import (
     MemoryStore,
@@ -83,7 +83,7 @@ def agent(
     tools = build_registry(writable=writable, web=web)
     policy = build_policy(
         approval_mode,
-        None if yolo else interactive_approver,
+        None if yolo else make_approver(root.resolve()),
         extra_allow_shell=perms.allow_shell,
         extra_deny_shell=perms.deny_shell,
         allow_paths=perms.allow_paths,

@@ -115,6 +115,9 @@ def doctor(
     ),
     as_json: bool = typer.Option(False, "--json", help="결과를 JSON으로 출력한다."),
     top: int = typer.Option(8, "--top", "-n", help="표시할 추천 모델 수."),
+    use: bool = typer.Option(
+        False, "--use", "-u", help="진단 후 추천 목록에서 모델을 골라 바로 설정한다."
+    ),
 ) -> None:
     """이 장비를 진단하고 실행 가능한 오픈모델을 추천한다."""
     hw = detect_hardware()
@@ -156,3 +159,21 @@ def doctor(
             border_style="green",
         )
     )
+
+    if use:
+        from gigachanie.commands._pick import pick
+        from gigachanie.commands.model import select_and_save
+
+        options = [
+            (
+                f"{r.model.display}  [{r.fit.label}]  {r.speed.label}  "
+                f"~{r.max_context // 1024}k",
+                r.model.id,
+            )
+            for r in shown
+            if r.fit.value != "no"
+        ]
+        chosen = pick("설정할 모델 선택", options)
+        if chosen:
+            raise typer.Exit(code=select_and_save(chosen))
+        console.print("[dim]선택 안 함.[/dim]")

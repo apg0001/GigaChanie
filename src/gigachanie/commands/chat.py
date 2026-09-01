@@ -15,7 +15,7 @@ from prompt_toolkit.history import FileHistory
 from rich.console import Console
 from rich.markup import escape
 
-from gigachanie.commands._agentui import interactive_approver, make_event_printer
+from gigachanie.commands._agentui import make_approver, make_event_printer
 from gigachanie.config import load_config
 from gigachanie.context import (
     MemoryStore,
@@ -100,7 +100,7 @@ class ChatSession:
         tools = build_registry(writable=self.writable, web=self.web)
         policy = build_policy(
             self.mode,
-            interactive_approver,
+            make_approver(self.root),
             extra_allow_shell=self.perms.allow_shell,
             extra_deny_shell=self.perms.deny_shell,
             allow_paths=self.perms.allow_paths,
