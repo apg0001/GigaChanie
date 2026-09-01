@@ -18,6 +18,7 @@ from gigachanie.commands import init as init_cmd
 from gigachanie.commands import map as map_cmd
 from gigachanie.commands import memory as memory_cmd
 from gigachanie.commands import model as model_cmd
+from gigachanie.commands import ps as ps_cmd
 from gigachanie.commands import undo as undo_cmd
 
 app = typer.Typer(
@@ -37,6 +38,8 @@ app.command("init")(init_cmd.init)
 app.command("map")(map_cmd.repo_map_cmd)
 app.command("eval")(eval_cmd.eval_cmd)
 app.command("undo")(undo_cmd.undo)
+app.command("ps")(ps_cmd.ps)
+app.command("kill")(ps_cmd.kill)
 app.add_typer(memory_cmd.app, name="memory")
 app.add_typer(model_cmd.app, name="model")
 

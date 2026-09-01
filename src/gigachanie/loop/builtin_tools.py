@@ -204,10 +204,12 @@ def build_registry(*, writable: bool = False, web: bool = False) -> ToolRegistry
     reg = default_readonly_registry()
     if writable:
         from gigachanie.loop.memory_tools import register_save_memory
+        from gigachanie.loop.proc_tools import register_proc_tools
         from gigachanie.loop.write_tools import register_write_tools
 
         register_write_tools(reg)
         register_save_memory(reg)
+        register_proc_tools(reg)
     if web:
         from gigachanie.loop.web_tools import register_web_tools
 

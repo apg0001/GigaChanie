@@ -13,6 +13,7 @@ from typing import Any, Protocol, runtime_checkable
 
 from gigachanie.loop.approval import ApprovalPolicy
 from gigachanie.loop.checkpoint import CheckpointStore
+from gigachanie.loop.procman import ProcessManager
 from gigachanie.serving.base import ToolSpec
 
 
@@ -25,6 +26,8 @@ class ToolContext:
     policy: ApprovalPolicy = field(default_factory=ApprovalPolicy)
     # 편집 스냅샷 저장소. None 이면 체크포인트 비활성.
     checkpoints: CheckpointStore | None = None
+    # 백그라운드 프로세스 관리자. None 이면 관련 도구 미등록.
+    procman: ProcessManager | None = None
     # 도구가 남기는 부가 메모(감사 로그 등)
     scratch: dict[str, Any] = field(default_factory=dict)
 
