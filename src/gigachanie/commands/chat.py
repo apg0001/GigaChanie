@@ -42,6 +42,7 @@ _HELP = """\
   /web on|off        웹 도구(web_search, web_fetch) 토글
   /remember <내용>   장기 메모리에 저장 (제목은 앞 40자)
   /memory            장기 메모리 목록
+  /compact           지금까지 대화를 요약해 압축
   /clear             대화 맥락 초기화 (모델·설정 유지)
   /steps <N>         최대 스텝 변경
   /info              현재 세션 상태
@@ -80,6 +81,7 @@ class ChatSession:
         self.map_files = len(rm.entries) if rm else 0
         self.memory_store = MemoryStore(root)
         self._refresh_memory()
+        self.compact_at = int((load_config().context or 32000) * 0.7)
         self.agent = self._new_agent()
 
     def _refresh_memory(self) -> None:
@@ -99,6 +101,7 @@ class ChatSession:
             memory_index=self.memory_index,
             max_steps=self.max_steps,
             temperature=self.temperature,
+            compact_at=self.compact_at,
         )
 
     def rebuild(self, *, keep_history: bool = True) -> None:
@@ -138,6 +141,8 @@ class ChatSession:
             self._cmd_remember(args)
         elif cmd == "/memory":
             self._cmd_memory()
+        elif cmd == "/compact":
+            self._cmd_compact()
         elif cmd == "/steps":
             self._cmd_steps(args)
         else:
@@ -216,6 +221,11 @@ class ChatSession:
             return
         for e in entries:
             console.print(f"[bold]{e.slug}[/bold] — {escape(e.title)}")
+
+    def _cmd_compact(self) -> None:
+        did = run_sync(self.agent.compact_now(make_event_printer()))
+        if not did:
+            console.print("[dim]압축할 만큼 대화가 길지 않습니다.[/dim]")
 
     def _cmd_steps(self, args: list[str]) -> None:
         if not args or not args[0].isdigit():
