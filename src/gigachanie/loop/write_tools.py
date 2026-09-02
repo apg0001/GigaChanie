@@ -157,7 +157,47 @@ async def _run_shell(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     return ToolResult(content=f"{header}\n{body}", is_error=bool(code))
 
 
+async def _render_document(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
+    from gigachanie.render import RenderError, render
+
+    md = args.get("markdown") or args.get("content")
+    path = args.get("path")
+    if not md or not isinstance(md, str) or not path:
+        raise ToolError("markdown 과 path 인자가 필요합니다.")
+    target = ctx.resolve(str(path))
+    allowed, reason = ctx.policy.check(
+        ApprovalRequest(
+            kind="write",
+            summary=f"문서 생성: {path}",
+            detail=md[:2000],
+            path=str(target),
+        )
+    )
+    if not allowed:
+        return ToolResult.error(f"문서 생성 거부됨 ({reason}): {path}")
+    ctx.snapshot(target)
+    try:
+        out = render(md, target)
+    except RenderError as exc:
+        return ToolResult.error(f"렌더 실패: {exc}")
+    return ToolResult(content=f"생성됨: {out.relative_to(ctx.root)} ({out.stat().st_size}B)")
+
+
 def register_write_tools(reg: ToolRegistry) -> None:
+    reg.register_func(
+        "render_document",
+        "마크다운을 슬라이드(.pptx)·문서(.docx)·웹페이지(.html) 파일로 만든다. "
+        "'# 제목', '## 슬라이드/섹션', '- 불릿' 구조를 쓴다.",
+        {
+            "type": "object",
+            "properties": {
+                "markdown": {"type": "string", "description": "문서 내용(마크다운)"},
+                "path": {"type": "string", "description": "출력 경로 (확장자로 형식 결정)"},
+            },
+            "required": ["markdown", "path"],
+        },
+        _render_document,
+    )
     reg.register_func(
         "apply_edit",
         "파일의 일부를 바꾼다. search(현재 코드 그대로) 를 찾아 replace 로 교체한다. "

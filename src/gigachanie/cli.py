@@ -22,6 +22,7 @@ from gigachanie.commands import memory as memory_cmd
 from gigachanie.commands import model as model_cmd
 from gigachanie.commands import policy as policy_cmd
 from gigachanie.commands import ps as ps_cmd
+from gigachanie.commands import render as render_cmd
 from gigachanie.commands import review as review_cmd
 from gigachanie.commands import route as route_cmd
 from gigachanie.commands import sessions as sessions_cmd
@@ -51,6 +52,7 @@ app.command("kill")(ps_cmd.kill)
 app.command("policy")(policy_cmd.policy)
 app.command("route")(route_cmd.route)
 app.command("review")(review_cmd.review)
+app.command("render")(render_cmd.render)
 app.command("commit")(git_cmd.commit)
 app.command("pr")(git_cmd.pr)
 app.add_typer(memory_cmd.app, name="memory")
