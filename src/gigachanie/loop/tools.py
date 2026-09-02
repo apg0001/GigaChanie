@@ -33,6 +33,10 @@ class ToolContext:
     ask_user: Callable[[str, list[str], bool], str] | None = None
     # 훅 러너 (.agent/hooks.yaml). None 이면 훅 비활성.
     hooks: Any = None  # HookRunner | None (순환 임포트 회피)
+    # 셸 샌드박스 계획. None 이면 격리 없이 실행.
+    sandbox: Any = None  # SandboxPlan | None
+    # 네트워크 허용 (샌드박스 사용 시 의미). 기본 True.
+    allow_network: bool = True
     # 도구가 남기는 부가 메모(감사 로그 등)
     scratch: dict[str, Any] = field(default_factory=dict)
 
