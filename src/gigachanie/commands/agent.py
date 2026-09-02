@@ -20,12 +20,13 @@ from gigachanie.context import (
     expand_refs,
     load_project_context,
 )
-from gigachanie.loop.agent import Agent
+from gigachanie.loop.agent import Agent, AgentEvent
 from gigachanie.loop.approval import ApprovalMode, build_policy
 from gigachanie.loop.builtin_tools import build_registry
 from gigachanie.loop.checkpoint import CheckpointStore
 from gigachanie.loop.hooks import HookRunner
 from gigachanie.loop.procman import ProcessManager
+from gigachanie.loop.runlog import RunLogger, git_changed_files
 from gigachanie.loop.sandbox import detect_sandbox
 from gigachanie.loop.tools import ToolContext
 from gigachanie.permissions import load_permissions
@@ -224,7 +225,13 @@ def agent(
             f"루트 {ctx.root}{ctx_note}[/dim]"
         )
     resolved_compact = compact_at or int((load_config().context or 32000) * 0.7)
-    handler = (lambda _ev: None) if as_json else make_event_printer()
+    runlog = RunLogger(ctx.root, task=task_text, model=backend.model)
+    _print_ev = (lambda _ev: None) if as_json else make_event_printer()
+
+    def handler(ev: AgentEvent) -> None:
+        runlog.observe(ev)
+        _print_ev(ev)
+
     ag = Agent(
         backend,
         tools,
@@ -277,18 +284,12 @@ def agent(
                         f"[yellow]백그라운드 프로세스 {len(left)}개 정리 중…[/yellow]"
                     )
                     procman.stop_all()
+        changed = git_changed_files(ctx.root)
+        runlog.finish(result, changed_files=changed)
+
         if as_json:
             import json as _json
-            import subprocess as _sp
 
-            changed = _sp.run(
-                ["git", "-C", str(ctx.root), "diff", "--name-only", "HEAD"],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                check=False,
-            ).stdout.split()
             print(
                 _json.dumps(
                     {
