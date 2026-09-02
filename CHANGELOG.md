@@ -30,6 +30,7 @@
 - `giga agent --json` — 결과를 JSON(ok·final_text·stop_reason·steps·tokens·changed_files)으로 출력, 진행 소음 억제. CI 용 (#21b)
 - 토큰 사용량 — `chat` 이 매 턴 후 토큰(이번/누적) 표시, `/cost` 로 세션 누적 확인 (#21b)
 - 멀티모달 입력 — 프롬프트의 `@사진.png` 는 이미지로(비전 모델), `@문서.pdf` 는 텍스트 추출(`pip install gigachanie[pdf]`)로 첨부 (#20b)
+- 문서 렌더링 — `giga render in.md -o deck.pptx`(또는 .docx/.html). 에이전트도 `render_document` 도구로 슬라이드·문서 생성. pandoc 있으면 우선 사용, 없으면 python-pptx/python-docx/markdown 폴백(`pip install "gigachanie[docs]"`) (#30)
 
 ### 변경
 - `agent`/`chat` 의 `--mode` 기본값이 `suggest` 고정 → permissions.yaml 의 `mode` 값 (없으면 suggest)

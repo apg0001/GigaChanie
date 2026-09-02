@@ -24,6 +24,7 @@ dependencies = [
 
 [project.optional-dependencies]
 pdf = ["pypdf>=4.0"]
+docs = ["python-pptx>=0.6", "python-docx>=1.0", "markdown>=3.5"]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
@@ -66,5 +67,5 @@ files = ["src/gigachanie"]
 exclude = ["src/gigachanie/eval/tasks/"]
 
 [[tool.mypy.overrides]]
-module = ["psutil", "pypdf"]
+module = ["psutil", "pypdf", "pptx", "pptx.*", "docx", "markdown"]
 ignore_missing_imports = true
