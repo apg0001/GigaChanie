@@ -328,7 +328,7 @@
     <div class="meta">
       <span><b>버전</b> 0.0.1</span>
       <span><b>최종 업데이트</b> 2026-09-01</span>
-      <span><b>반영 범위</b> 이슈 #1–#22, #24–#29 (부분 포함) · CLI 22개</span>
+      <span><b>반영 범위</b> 이슈 #1–#22, #24–#29 (부분 포함) · CLI 22개 · 멀티모달 입력</span>
       <span><b>실행 명령</b> <code>giga</code></span>
     </div>
   </div>
@@ -1007,10 +1007,15 @@ deny_shell:
         오래된 메시지를 요약 하나로 치환합니다. 시스템 프롬프트와 최근 메시지는 그대로 둡니다.
         <code>chat</code>에서 <code>/compact</code>로 직접 실행할 수도 있습니다.</p>
 
-      <h3>@파일 참조</h3>
-      <p>입력에 <code>@경로</code>를 쓰면 해당 파일 내용이 프롬프트에 첨부됩니다.
-        공백이 있으면 <code>@"경로 이름"</code>처럼 따옴표로 감쌉니다.</p>
-      <pre><code><span class="p">›</span> 이 @src/gigachanie/loop/edit.py 의 매칭 단계를 정리해줘</code></pre>
+      <h3>@파일 참조 · 이미지 · PDF</h3>
+      <p>입력에 <code>@경로</code>를 쓰면 첨부됩니다 (공백 경로는 <code>@"경로 이름"</code>):</p>
+      <ul class="clean">
+        <li><b>텍스트 파일</b> — 내용을 프롬프트에 인라인</li>
+        <li><b>이미지</b>(<code>.png .jpg .gif .webp</code>) — base64 로 모델에 전달.
+          <b>비전 모델</b>이어야 합니다 (레지스트리의 <code>gemma3</code>, <code>mistral-small</code> 등)</li>
+        <li><b>PDF</b>(<code>.pdf</code>) — 텍스트 추출. <code>pip install "gigachanie[pdf]"</code> 필요</li>
+      </ul>
+      <pre><code><span class="p">›</span> 이 @design.png 시안대로 @src/ui/Home.tsx 를 고쳐줘</code></pre>
     </section>
 
     <section id="config">

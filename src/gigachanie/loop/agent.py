@@ -103,10 +103,14 @@ class Agent:
     # ------------------------------------------------------------------ run
 
     async def run(
-        self, user_input: str, *, on_event: EventHandler | None = None
+        self,
+        user_input: str,
+        *,
+        on_event: EventHandler | None = None,
+        images: list[str] | None = None,
     ) -> AgentResult:
         emit = on_event or (lambda _e: None)
-        self.messages.append(Message.user(user_input))
+        self.messages.append(Message.user(user_input, images))
 
         if self.ctx.checkpoints is not None:
             self.ctx.checkpoints.open_turn(user_input)

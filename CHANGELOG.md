@@ -29,6 +29,7 @@
 - 훅 — `.agent/hooks.yaml` 로 `pre_tool`(종료코드≠0 이면 도구 차단)·`post_tool`·`session_start`·`stop` 에서 셸 명령 실행 (#19)
 - `giga agent --json` — 결과를 JSON(ok·final_text·stop_reason·steps·tokens·changed_files)으로 출력, 진행 소음 억제. CI 용 (#21b)
 - 토큰 사용량 — `chat` 이 매 턴 후 토큰(이번/누적) 표시, `/cost` 로 세션 누적 확인 (#21b)
+- 멀티모달 입력 — 프롬프트의 `@사진.png` 는 이미지로(비전 모델), `@문서.pdf` 는 텍스트 추출(`pip install gigachanie[pdf]`)로 첨부 (#20b)
 
 ### 변경
 - `agent`/`chat` 의 `--mode` 기본값이 `suggest` 고정 → permissions.yaml 의 `mode` 값 (없으면 suggest)

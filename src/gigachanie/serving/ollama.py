@@ -33,10 +33,18 @@ _DEFAULT_TIMEOUT = httpx.Timeout(connect=5.0, read=300.0, write=30.0, pool=5.0)
 _DEFAULT_HOST = "http://127.0.0.1:11434"
 
 
+def _strip_data_uri(uri: str) -> str:
+    if uri.startswith("data:") and ";base64," in uri:
+        return uri.split(";base64,", 1)[1]
+    return uri
+
+
 def _message_to_wire(msg: Message) -> dict[str, Any]:
     if msg.role == "tool":
         return {"role": "tool", "content": msg.content}
     out: dict[str, Any] = {"role": msg.role, "content": msg.content}
+    if msg.images:
+        out["images"] = [_strip_data_uri(u) for u in msg.images]
     if msg.tool_calls:
         out["tool_calls"] = [
             {"function": {"name": tc.name, "arguments": tc.arguments}}
