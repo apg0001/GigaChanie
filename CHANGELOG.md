@@ -8,6 +8,12 @@
 ### 문서
 - HTML 사용 설명서 `docs/manual.html` 추가 (#26). 명령·옵션·도구·설정 레퍼런스.
 
+### 수정
+- Windows에서 Ollama가 표준 설치 경로에 있지만 현재 프로세스 `PATH`에 없을 때도
+  설치·실행 상태를 인식하고, winget의 "적용 가능한 업그레이드 없음"을 실패로
+  오표시하지 않도록 수정 (#29)
+- Pandoc으로 HTML을 렌더링할 때 완전한 문서(`<!doctype html>`)가 생성되도록 수정 (#30)
+
 ### 추가
 - `giga map` — 저장소 심볼 맵 (심볼 추출 + 참조 랭킹). `agent`/`chat` 은 컨텍스트에 자동 주입, `--no-map` 으로 끔 (#11)
 - `giga memory add/list/show/search/rm` — 장기 메모리. `agent`/`chat` 은 목차를 컨텍스트에 주입하고 `read_memory`/`save_memory` 도구·`/remember`·`/memory` 로 접근 (#12)

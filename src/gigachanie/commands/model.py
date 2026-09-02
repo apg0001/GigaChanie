@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 import sys
 
@@ -283,11 +282,14 @@ def _ensure_ollama_for_pull() -> bool:
 
 
 def _ollama_has(tag: str) -> bool:
-    if not shutil.which("ollama"):
+    from gigachanie.serving import ollama_setup
+
+    path = ollama_setup.executable_path()
+    if path is None:
         return False
     try:
         out = subprocess.run(
-            ["ollama", "list"], capture_output=True, text=True, timeout=4, check=False
+            [path, "list"], capture_output=True, text=True, timeout=4, check=False
         )
     except (OSError, subprocess.SubprocessError):
         return False
@@ -297,12 +299,15 @@ def _ollama_has(tag: str) -> bool:
 
 def _ollama_pull(tag: str) -> int:
     """`ollama pull <tag>` 를 실행하고 종료코드를 돌려준다."""
-    if not shutil.which("ollama"):
+    from gigachanie.serving import ollama_setup
+
+    path = ollama_setup.executable_path()
+    if path is None:
         console.print("[red]ollama 가 설치되어 있지 않습니다.[/red] https://ollama.com")
         return 1
     console.print(f"[cyan]ollama pull {tag}[/cyan] 실행 중...")
     try:
-        return subprocess.run(["ollama", "pull", tag], check=False).returncode
+        return subprocess.run([path, "pull", tag], check=False).returncode
     except (OSError, subprocess.SubprocessError) as exc:
         console.print(f"[red]다운로드 실패: {exc}[/red]")
         return 1

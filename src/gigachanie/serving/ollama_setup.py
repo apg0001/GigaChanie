@@ -8,19 +8,51 @@
 
 from __future__ import annotations
 
+import os
 import platform
 import shutil
 import subprocess
 import time
+from pathlib import Path
 
 import httpx
 
 _DOWNLOAD_URL = "https://ollama.com/download"
 _DEFAULT_HOST = "http://127.0.0.1:11434"
+_WINGET_NO_APPLICABLE_UPGRADE = 0x8A15002B
+
+
+def _windows_executable_candidates() -> tuple[Path, ...]:
+    """Windows 설치 프로그램이 사용하는 Ollama 실행 파일 후보를 돌려준다."""
+    candidates: list[Path] = []
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    if local_app_data:
+        candidates.append(Path(local_app_data) / "Programs" / "Ollama" / "ollama.exe")
+    else:
+        candidates.append(Path.home() / "AppData" / "Local" / "Programs" / "Ollama" / "ollama.exe")
+
+    for variable in ("PROGRAMFILES", "PROGRAMFILES(X86)"):
+        program_files = os.environ.get(variable)
+        if program_files:
+            candidates.append(Path(program_files) / "Ollama" / "ollama.exe")
+    return tuple(candidates)
+
+
+def executable_path() -> str | None:
+    """PATH와 플랫폼 표준 설치 위치에서 Ollama 실행 파일을 찾는다."""
+    path = shutil.which("ollama")
+    if path:
+        return path
+    if platform.system() != "Windows":
+        return None
+    for candidate in _windows_executable_candidates():
+        if candidate.is_file():
+            return str(candidate)
+    return None
 
 
 def is_installed() -> bool:
-    return shutil.which("ollama") is not None
+    return executable_path() is not None
 
 
 def daemon_up(host: str = _DEFAULT_HOST) -> bool:
@@ -65,6 +97,8 @@ def install() -> tuple[bool, str]:
                 "--accept-source-agreements",
             ]
         )
+        if code & 0xFFFFFFFF == _WINGET_NO_APPLICABLE_UPGRADE:
+            return True, "Ollama가 이미 설치되어 있으며 최신 버전입니다."
         if code != 0:
             return False, f"winget 설치 실패(코드 {code}). 수동 설치: {_DOWNLOAD_URL}"
         return True, "설치 완료. 새 터미널이 필요할 수 있습니다 (PATH 갱신)."
@@ -90,7 +124,10 @@ def install() -> tuple[bool, str]:
 
 def try_start_daemon() -> None:
     """데몬을 띄워 본다 (백그라운드). 실패해도 조용히 넘어간다."""
-    if not is_installed():
+    if daemon_up():
+        return
+    path = executable_path()
+    if path is None:
         return
     try:
         kwargs: dict[str, object] = {
@@ -103,7 +140,7 @@ def try_start_daemon() -> None:
             kwargs["creationflags"] = flags
         else:
             kwargs["start_new_session"] = True
-        subprocess.Popen(["ollama", "serve"], **kwargs)  # type: ignore[call-overload]
+        subprocess.Popen([path, "serve"], **kwargs)  # type: ignore[call-overload]
     except (OSError, subprocess.SubprocessError):
         return
 
@@ -114,9 +151,10 @@ def ensure_ready(*, auto: bool, ask: bool) -> tuple[bool, str]:
     auto=True 면 설치를 바로 진행, ask=True 면 호출부가 확인을 받은 상태.
     반환: (준비됨, 안내 메시지)
     """
+    if daemon_up():
+        return True, "ollama 준비됨"
+
     if is_installed():
-        if daemon_up():
-            return True, "ollama 준비됨"
         try_start_daemon()
         if wait_for_daemon(15):
             return True, "ollama 데몬 시작됨"

@@ -1,10 +1,12 @@
 """마크다운 렌더링 테스트."""
 
+import subprocess
 from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
+import gigachanie.render as render_module
 from gigachanie.cli import app
 from gigachanie.render import RenderError, parse_markdown, render
 
@@ -43,8 +45,25 @@ def test_render_md_passthrough(tmp_path: Path) -> None:
 def test_render_html(tmp_path: Path) -> None:
     out = render(_MD, tmp_path / "deck.html")
     html = out.read_text(encoding="utf-8")
-    assert "<!doctype html>" in html
+    assert "<!doctype html>" in html.lower()
     assert "분기 계획" in html
+
+
+def test_pandoc_html만_standalone_옵션_사용(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    commands: list[list[str]] = []
+
+    def fake_run(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        commands.append(command)
+        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(render_module.subprocess, "run", fake_run)
+    render_module._pandoc(tmp_path / "input.md", tmp_path / "output.html")
+    render_module._pandoc(tmp_path / "input.md", tmp_path / "output.docx")
+
+    assert "--standalone" in commands[0]
+    assert "--standalone" not in commands[1]
 
 
 def test_render_docx(tmp_path: Path) -> None:

@@ -188,11 +188,13 @@ def _detect_gpus(ram_total_gb: float, is_apple_silicon: bool) -> list[GPU]:
 
 
 def _ollama_backend() -> Backend:
-    path = shutil.which("ollama")
-    if not path:
+    from gigachanie.serving import ollama_setup
+
+    path = ollama_setup.executable_path()
+    if path is None:
         return Backend(name="ollama", available=False, detail="ollama 미설치")
     # 데몬이 떠 있는지 확인
-    out = _run(["ollama", "list"])
+    out = _run([path, "list"])
     if out is None:
         return Backend(
             name="ollama",

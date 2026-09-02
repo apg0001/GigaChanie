@@ -75,8 +75,11 @@ def parse_markdown(md: str) -> Doc:
 
 
 def _pandoc(src: Path, out: Path) -> None:
+    command = ["pandoc", str(src), "-o", str(out)]
+    if out.suffix.lower() in (".html", ".htm"):
+        command.append("--standalone")
     proc = subprocess.run(
-        ["pandoc", str(src), "-o", str(out)],
+        command,
         capture_output=True,
         text=True,
         encoding="utf-8",
