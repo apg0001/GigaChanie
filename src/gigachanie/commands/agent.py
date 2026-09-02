@@ -26,6 +26,7 @@ from gigachanie.loop.builtin_tools import build_registry
 from gigachanie.loop.checkpoint import CheckpointStore
 from gigachanie.loop.hooks import HookRunner
 from gigachanie.loop.procman import ProcessManager
+from gigachanie.loop.sandbox import detect_sandbox
 from gigachanie.loop.tools import ToolContext
 from gigachanie.permissions import load_permissions
 from gigachanie.serving.base import BackendError, run_sync
@@ -129,6 +130,14 @@ def agent(
     as_json: bool = typer.Option(
         False, "--json", help="사람용 출력 대신 결과를 JSON 한 덩어리로 출력한다 (CI용)."
     ),
+    sandbox: bool = typer.Option(
+        False,
+        "--sandbox",
+        help="셸 명령을 OS 샌드박스로 격리 (Linux=bwrap/firejail, macOS=seatbelt).",
+    ),
+    no_network: bool = typer.Option(
+        False, "--no-network", help="샌드박스에서 네트워크를 차단한다."
+    ),
 ) -> None:
     """도구를 사용해 코드베이스를 조사하거나 수정한다."""
     task_text = " ".join(task)
@@ -164,6 +173,9 @@ def agent(
     )
     procman = ProcessManager(root.resolve()) if writable else None
     hook_runner = HookRunner.load(root.resolve())
+    sb_plan = detect_sandbox() if sandbox else None
+    if sandbox and sb_plan is not None and not sb_plan.available and not as_json:
+        console.print(f"[yellow]![/yellow] 샌드박스 불가: {sb_plan.note} (격리 없이 실행)")
     ctx = ToolContext(
         root=root.resolve(),
         policy=policy,
@@ -171,6 +183,8 @@ def agent(
         procman=procman,
         ask_user=ask_user if _is_tty() else None,
         hooks=hook_runner if hook_runner.enabled else None,
+        sandbox=sb_plan,
+        allow_network=not no_network,
     )
     if not ctx.root.is_dir():
         console.print(f"[red]디렉터리가 아닙니다: {root}[/red]")

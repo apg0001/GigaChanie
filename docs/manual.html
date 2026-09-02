@@ -551,6 +551,7 @@ python -m pip install -e ".[dev]"
               <tr><td><code>--review</code> / <code>--review-fix</code></td><td>작업 후 변경을 검토 모델에게 리뷰 / 지적 1회 반영</td></tr>
               <tr><td><code>--mcp</code></td><td>.mcp.json 의 MCP 서버 도구 활성화</td></tr>
               <tr><td><code>--json</code></td><td>결과를 JSON(ok·steps·tokens·changed_files)으로 출력 (CI용)</td></tr>
+              <tr><td><code>--sandbox</code> / <code>--no-network</code></td><td>셸을 OS 샌드박스로 격리 (Linux/macOS) / 망 차단</td></tr>
             </tbody>
           </table>
           <pre><code><span class="p">giga</span> agent -w --mode auto-edit "모든 함수에 타입 힌트를 추가해줘"
@@ -945,6 +946,8 @@ stop:
         <li><code>--yolo</code> — <code>full-auto</code> + <code>--write</code> 를 한 번에. 확인 창이 전혀 뜨지 않습니다.</li>
         <li>승인 거부는 오류가 아니라 모델에게 피드백으로 전달되어 다른 방법을 찾게 합니다.</li>
         <li>쓰기 모드에서는 편집 직전 파일이 스냅샷되어 <a href="#undo"><code>giga undo</code></a>로 되돌릴 수 있습니다.</li>
+        <li><code>giga agent --sandbox</code>: Linux(bubblewrap/firejail)·macOS(seatbelt)에서 셸 명령을
+          격리해 작업 루트 밖 쓰기를 막습니다. <code>--no-network</code>로 망도 차단. Windows는 미지원.</li>
       </ul>
 
       <h3>permissions.yaml</h3>

@@ -131,9 +131,15 @@ async def _run_shell(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     if not allowed:
         return ToolResult.error(f"명령 거부됨 ({reason}): {cmd}")
 
+    argv = _shell_argv(cmd)
+    sb_note = ""
+    if ctx.sandbox is not None and getattr(ctx.sandbox, "available", False):
+        argv = ctx.sandbox.wrap(argv, root=ctx.root, allow_net=ctx.allow_network)
+        sb_note = f" [{ctx.sandbox.tool}]"
+
     try:
         proc = await asyncio.create_subprocess_exec(
-            *_shell_argv(cmd),
+            *argv,
             cwd=str(ctx.root),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
@@ -152,7 +158,7 @@ async def _run_shell(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     if len(output) > _MAX_OUTPUT:
         output = output[:_MAX_OUTPUT] + f"\n... [{_MAX_OUTPUT}자에서 잘림]"
     code = proc.returncode
-    header = f"$ {cmd}\n[종료코드 {code}]"
+    header = f"$ {cmd}{sb_note}\n[종료코드 {code}]"
     body = output.strip() or "(출력 없음)"
     return ToolResult(content=f"{header}\n{body}", is_error=bool(code))
 
