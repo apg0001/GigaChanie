@@ -40,7 +40,16 @@ def _message_to_wire(msg: Message) -> dict[str, Any]:
         if msg.name:
             out["name"] = msg.name
         return out
-    out["content"] = msg.content
+    if msg.images:
+        out["content"] = [
+            {"type": "text", "text": msg.content},
+            *(
+                {"type": "image_url", "image_url": {"url": uri}}
+                for uri in msg.images
+            ),
+        ]
+    else:
+        out["content"] = msg.content
     if msg.tool_calls:
         out["tool_calls"] = [
             {

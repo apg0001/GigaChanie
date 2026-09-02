@@ -21,7 +21,7 @@ from gigachanie.config import load_config
 from gigachanie.context import (
     MemoryStore,
     build_repo_map,
-    expand_file_refs,
+    expand_refs,
     load_project_context,
 )
 from gigachanie.loop.agent import Agent
@@ -329,12 +329,15 @@ class ChatSession:
 
 
 async def _run_turn(session: ChatSession, text: str) -> None:
-    text, refs = expand_file_refs(text, session.root)
-    if refs:
-        console.print(f"[dim]첨부: {', '.join(refs)}[/dim]")
+    exp = expand_refs(text, session.root)
+    attached = exp.text_files + [f"{f}(이미지)" for f in exp.image_files]
+    if attached:
+        console.print(f"[dim]첨부: {', '.join(attached)}[/dim]")
+    for note in exp.notes:
+        console.print(f"[yellow]![/yellow] {note}")
     printer = make_event_printer()
     try:
-        result = await session.agent.run(text, on_event=printer)
+        result = await session.agent.run(exp.text, on_event=printer, images=exp.images)
     except (KeyboardInterrupt, asyncio.CancelledError):
         console.print("\n[yellow]중단됨[/yellow]")
         session._persist()

@@ -32,14 +32,16 @@ class Message:
     # role == "tool" 일 때: 어떤 호출에 대한 결과인지
     tool_call_id: str | None = None
     name: str | None = None
+    # 첨부 이미지: "data:image/png;base64,..." 또는 순수 base64 문자열
+    images: list[str] = field(default_factory=list)
 
     @classmethod
     def system(cls, content: str) -> Message:
         return cls(role="system", content=content)
 
     @classmethod
-    def user(cls, content: str) -> Message:
-        return cls(role="user", content=content)
+    def user(cls, content: str, images: list[str] | None = None) -> Message:
+        return cls(role="user", content=content, images=images or [])
 
     @classmethod
     def assistant(cls, content: str = "", tool_calls: list[ToolCall] | None = None) -> Message:

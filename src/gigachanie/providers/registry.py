@@ -93,6 +93,13 @@ class Registry:
         """로컬 백엔드(ollama / openai_compat 로컬)에서 구동 가능한 모델."""
         return [m for m in self.models if "ollama" in m.backends]
 
+    def has_vision(self, model_name: str) -> bool | None:
+        """model_name(id 또는 ollama 태그)이 비전 지원인지. 모르면 None."""
+        for m in self.models:
+            if model_name in (m.id, m.ollama_tag):
+                return m.vision
+        return None
+
 
 def _parse_model(raw: dict[str, Any]) -> Model:
     quants = tuple(

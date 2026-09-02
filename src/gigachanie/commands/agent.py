@@ -17,7 +17,7 @@ from gigachanie.config import Config, load_config
 from gigachanie.context import (
     MemoryStore,
     build_repo_map,
-    expand_file_refs,
+    expand_refs,
     load_project_context,
 )
 from gigachanie.loop.agent import Agent
@@ -179,7 +179,9 @@ def agent(
     pc = None if no_context else load_project_context(ctx.root, Path.cwd())
     rm = None if no_map else build_repo_map(ctx.root, cwd=Path.cwd())
     mem_index = "" if no_context else MemoryStore(ctx.root).index_text()
-    task_text, refs = expand_file_refs(task_text, ctx.root)
+    exp = expand_refs(task_text, ctx.root)
+    task_text = exp.text
+    task_images = exp.images
 
     ctx_note = ""
     if pc and pc.found:
@@ -188,8 +190,19 @@ def agent(
         ctx_note += " · 메모리"
     if rm and rm.found:
         ctx_note += f" · 맵 {len(rm.entries)}파일"
-    if refs:
-        ctx_note += f" · 첨부 {', '.join(refs)}"
+    if exp.text_files:
+        ctx_note += f" · 첨부 {', '.join(exp.text_files)}"
+    if exp.image_files:
+        ctx_note += f" · 이미지 {', '.join(exp.image_files)}"
+        from gigachanie.providers.registry import default_registry
+
+        if default_registry().has_vision(backend.model) is False:
+            console.print(
+                f"[yellow]![/yellow] '{backend.model}' 은 비전 미지원 모델입니다. "
+                "이미지가 무시될 수 있습니다 (gemma3/mistral-small 등 사용)."
+            )
+    for note in exp.notes:
+        console.print(f"[yellow]![/yellow] {note}")
     if not as_json:
         console.print(
             f"[dim]모델 {backend.model} · 도구 {', '.join(tools.names())} · "
@@ -234,7 +247,7 @@ def agent(
         if hook_runner.enabled:
             hook_runner.fire("session_start")
         try:
-            result = await ag.run(task_text, on_event=handler)
+            result = await ag.run(task_text, on_event=handler, images=task_images)
             if (do_review or review_fix) and writable:
                 await _pipeline_review(ag, ctx.root, task_text, apply_fix=review_fix)
         finally:
