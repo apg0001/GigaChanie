@@ -26,6 +26,7 @@ from gigachanie.commands import render as render_cmd
 from gigachanie.commands import review as review_cmd
 from gigachanie.commands import route as route_cmd
 from gigachanie.commands import runlog as runlog_cmd
+from gigachanie.commands import selfup as selfup_cmd
 from gigachanie.commands import sessions as sessions_cmd
 from gigachanie.commands import setup as setup_cmd
 from gigachanie.commands import undo as undo_cmd
@@ -61,6 +62,7 @@ app.add_typer(memory_cmd.app, name="memory")
 app.add_typer(mcp_cmd.app, name="mcp")
 app.add_typer(model_cmd.app, name="model")
 app.add_typer(sessions_cmd.app, name="sessions")
+app.add_typer(selfup_cmd.app, name="self")
 
 
 def _version_callback(value: bool) -> None:

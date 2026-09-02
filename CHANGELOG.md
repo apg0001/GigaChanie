@@ -39,6 +39,7 @@
 - 문서 렌더링 — `giga render in.md -o deck.pptx`(또는 .docx/.html). 에이전트도 `render_document` 도구로 슬라이드·문서 생성. pandoc 있으면 우선 사용, 없으면 python-pptx/python-docx/markdown 폴백(`pip install "gigachanie[docs]"`) (#30)
 - 셸 샌드박스 — `giga agent --sandbox`: Linux=bubblewrap/firejail, macOS=sandbox-exec 로 `run_shell` 격리(쓰기를 작업 루트로 제한). `--no-network` 로 망 차단. Windows 는 미지원(승인 정책에 의존) (#15)
 - 실행 로그 — `agent`/`chat` 실행마다 `.agent/logs/runs.jsonl` 에 한 줄(시각·모델·성공·스텝·토큰·도구별 호출수·편집실패·변경파일·소요초). `giga runlog`(표), `giga runlog --stats`(통과율·합계) 로 조회. 프롬프트/모델 바꿔가며 추이 확인용 (#22b)
+- 자기 점검·업데이트 — `giga self info`(설치 방식·버전·PyPI 최신 여부), `giga self check`(파이썬·의존성·임포트 진단), `giga self update`(editable=git pull / pipx=upgrade / pip=`-U`, `--dry-run`·`--check`), `giga self fix "문제"`(에이전트를 GigaChanie 자기 저장소에 `--write --web` 로 돌려 웹·코드 조사 후 수정하고 pytest 로 검증; 소스 설치에서만) (#31)
 
 ### 변경
 - `agent`/`chat` 의 `--mode` 기본값이 `suggest` 고정 → permissions.yaml 의 `mode` 값 (없으면 suggest)

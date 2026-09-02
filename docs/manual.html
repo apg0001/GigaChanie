@@ -358,6 +358,7 @@
       <li><a href="#render">giga render</a></li>
       <li><a href="#git">giga commit · pr</a></li>
       <li><a href="#runlog">giga runlog</a></li>
+      <li><a href="#self">giga self</a></li>
       <li><a href="#ext">커스텀 명령 · 훅</a></li>
       <li><a href="#tools">도구</a></li>
       <li><a href="#approval">승인 모드</a></li>
@@ -888,6 +889,47 @@ stop:
           </table>
           <p>기록 항목: 시각 · 모델 · 성공여부 · 종료사유 · 스텝 · 토큰(prompt/completion/total) ·
             도구별 호출수 · 편집실패 수 · 변경 파일 · 소요 초.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="self">
+      <h2>giga self</h2>
+      <p class="section-note">GigaChanie가 자기 설치 상태를 파악하고 스스로를 업데이트하거나,
+        에이전트를 자기 저장소에 돌려 문제를 조사·수정합니다. 설치 방식은
+        <code>direct_url.json</code>으로 판별합니다(editable / pip / pipx).</p>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga self info</span> [--offline] &nbsp;·&nbsp;
+          <span class="sig">giga self check</span></div>
+        <div class="cmd__body">
+          <p><code>info</code>: 버전·설치 방식·위치·소스 저장소, PyPI 최신 버전과 비교.
+            <code>check</code>: 파이썬 버전·깨진 의존성(<code>pip check</code>)·임포트 오류 진단
+            (문제가 있으면 종료코드 1).</p>
+        </div>
+      </div>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga self update</span> [-y] [--dry-run] [--check]</div>
+        <div class="cmd__body">
+          <table>
+            <tbody>
+              <tr><td>editable+git</td><td><code>git pull --ff-only</code></td></tr>
+              <tr><td>pipx</td><td><code>pipx upgrade gigachanie</code></td></tr>
+              <tr><td>그 외</td><td><code>pip install -U gigachanie</code></td></tr>
+              <tr><td><code>--dry-run</code></td><td>실행할 명령만 출력</td></tr>
+              <tr><td><code>--check</code></td><td>업데이트 여부만 확인 (있으면 종료코드 1)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga self fix</span> ["문제 설명"] [-y] [--show]</div>
+        <div class="cmd__body">
+          <p>에이전트를 GigaChanie 소스 저장소에서 <code>--write --web</code>로 실행합니다.
+            <code>web_search</code>/<code>web_fetch</code>로 최신 정보를 찾고, 코드·테스트를 읽어
+            원인을 파악한 뒤 수정하고 <code>python -m pytest -q</code>로 검증합니다.
+            설명을 생략하면 테스트·<code>ruff</code>·<code>mypy</code>를 돌려 실패를 고칩니다.
+            <code>-y</code>는 승인 없이 자동 실행(<code>--yolo</code>), <code>--show</code>는 명령만 출력.
+            소스(<code>pip install -e .</code>) 설치에서만 동작합니다.</p>
         </div>
       </div>
     </section>
