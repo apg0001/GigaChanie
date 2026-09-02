@@ -327,7 +327,7 @@
     </p>
     <div class="meta">
       <span><b>버전</b> 0.0.1</span>
-      <span><b>최종 업데이트</b> 2026-09-01</span>
+      <span><b>최종 업데이트</b> 2026-09-02</span>
       <span><b>반영 범위</b> 이슈 #1–#22, #24–#29 (부분 포함) · CLI 22개 · 멀티모달 입력</span>
       <span><b>실행 명령</b> <code>giga</code></span>
     </div>
@@ -357,6 +357,7 @@
       <li><a href="#review">giga review</a></li>
       <li><a href="#render">giga render</a></li>
       <li><a href="#git">giga commit · pr</a></li>
+      <li><a href="#runlog">giga runlog</a></li>
       <li><a href="#ext">커스텀 명령 · 훅</a></li>
       <li><a href="#tools">도구</a></li>
       <li><a href="#approval">승인 모드</a></li>
@@ -866,6 +867,27 @@ stop:
         <div class="cmd__body">
           <p><code>base..HEAD</code> 커밋으로 PR 제목/본문 초안을 만듭니다.
             <code>gh</code>가 있고 <code>--create</code>면 실제 PR 을, 없으면 compare URL 을 안내합니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="runlog">
+      <h2>giga runlog</h2>
+      <p class="section-note"><code>giga agent</code>·<code>giga chat</code>은 실행(턴)마다
+        <code>.agent/logs/runs.jsonl</code>에 한 줄을 남깁니다. 프롬프트·모델을 바꿔가며
+        통과율·스텝·토큰 추이를 보는 용도입니다. <code>jq</code>로 직접 파싱하거나
+        <code>giga runlog</code>로 표·요약을 봅니다. (<code>.gitignore</code> 처리됨)</p>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga runlog</span> [-C DIR] [-n 20] [--stats]</div>
+        <div class="cmd__body">
+          <table>
+            <tbody>
+              <tr><td><code>-n, --limit</code></td><td>최근 N건만 표시 (기본 20)</td></tr>
+              <tr><td><code>-s, --stats</code></td><td>표 대신 합계·통과율 한 줄 요약</td></tr>
+            </tbody>
+          </table>
+          <p>기록 항목: 시각 · 모델 · 성공여부 · 종료사유 · 스텝 · 토큰(prompt/completion/total) ·
+            도구별 호출수 · 편집실패 수 · 변경 파일 · 소요 초.</p>
         </div>
       </div>
     </section>

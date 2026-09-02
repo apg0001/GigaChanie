@@ -24,12 +24,13 @@ from gigachanie.context import (
     expand_refs,
     load_project_context,
 )
-from gigachanie.loop.agent import Agent
+from gigachanie.loop.agent import Agent, AgentEvent
 from gigachanie.loop.approval import ApprovalMode, build_policy
 from gigachanie.loop.builtin_tools import build_registry
 from gigachanie.loop.checkpoint import CheckpointStore
 from gigachanie.loop.hooks import HookRunner
 from gigachanie.loop.procman import ProcessManager
+from gigachanie.loop.runlog import RunLogger, git_changed_files
 from gigachanie.loop.tools import ToolContext
 from gigachanie.permissions import load_permissions
 from gigachanie.serving.base import Backend, BackendError, run_sync
@@ -336,12 +337,19 @@ async def _run_turn(session: ChatSession, text: str) -> None:
     for note in exp.notes:
         console.print(f"[yellow]![/yellow] {note}")
     printer = make_event_printer()
+    runlog = RunLogger(session.root, task=text, model=session.agent.backend.model)
+
+    def _handler(ev: AgentEvent) -> None:
+        runlog.observe(ev)
+        printer(ev)
+
     try:
-        result = await session.agent.run(exp.text, on_event=printer, images=exp.images)
+        result = await session.agent.run(exp.text, on_event=_handler, images=exp.images)
     except (KeyboardInterrupt, asyncio.CancelledError):
         console.print("\n[yellow]중단됨[/yellow]")
         session._persist()
         return
+    runlog.finish(result, changed_files=git_changed_files(session.root))
     session.usage_prompt += result.usage.prompt_tokens
     session.usage_completion += result.usage.completion_tokens
     session._persist()
