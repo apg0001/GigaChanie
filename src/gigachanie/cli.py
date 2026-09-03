@@ -11,7 +11,9 @@ from gigachanie import __version__
 from gigachanie.commands import agent as agent_cmd
 from gigachanie.commands import ask as ask_cmd
 from gigachanie.commands import chat as chat_cmd
+from gigachanie.commands import divide as divide_cmd
 from gigachanie.commands import doctor as doctor_cmd
+from gigachanie.commands import ensemble as ensemble_cmd
 from gigachanie.commands import eval as eval_cmd
 from gigachanie.commands import git as git_cmd
 from gigachanie.commands import init as init_cmd
@@ -58,6 +60,8 @@ app.command("ps")(ps_cmd.ps)
 app.command("kill")(ps_cmd.kill)
 app.command("policy")(policy_cmd.policy)
 app.command("route")(route_cmd.route)
+app.command("ensemble")(ensemble_cmd.ensemble)
+app.command("divide")(divide_cmd.divide)
 app.command("runlog")(runlog_cmd.runlog)
 app.command("serve")(serve_cmd.serve)
 app.command("review")(review_cmd.review)

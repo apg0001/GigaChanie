@@ -79,6 +79,26 @@ def build_backend(
     return _backend_from_cfg(cfg, reg)
 
 
+def build_model_backend(
+    model_id: str,
+    *,
+    backend: str | None = None,
+    base_url: str | None = None,
+    context: int | None = None,
+) -> Backend:
+    """라우터를 거치지 않고 특정 모델 하나로 백엔드를 만든다 (앙상블·작업 분할용)."""
+    base = load_config()
+    return _backend_from_cfg(
+        Config(
+            model_id=model_id,
+            backend=backend or base.backend,
+            base_url=base_url or base.base_url,
+            context=context or base.context,
+        ),
+        default_registry(),
+    )
+
+
 def _try_router(reg: Registry, root: Path, cfg: Config) -> Backend | None:
     from gigachanie.orchestra.router import ModelRef, RouterBackend, load_orchestra_config
 
