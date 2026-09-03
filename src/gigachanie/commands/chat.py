@@ -31,6 +31,7 @@ from gigachanie.loop.builtin_tools import build_registry
 from gigachanie.loop.checkpoint import CheckpointStore
 from gigachanie.loop.hooks import HookRunner
 from gigachanie.loop.procman import ProcessManager
+from gigachanie.loop.prompt import think_directive
 from gigachanie.loop.runlog import RunLogger, git_changed_files
 from gigachanie.loop.tools import ToolContext
 from gigachanie.permissions import load_permissions
@@ -77,6 +78,8 @@ class ChatSession:
         use_map: bool = True,
         web: bool = False,
         prompts: list[str] | None = None,
+        think: bool = False,
+        think_hard: bool = False,
         resume: SessionData | None = None,
     ) -> None:
         self.backend = backend
@@ -94,9 +97,10 @@ class ChatSession:
         self.repo_map = rm.text if rm and rm.found else None
         self.map_files = len(rm.entries) if rm else 0
         extra, missing = load_prompts(root, prompts or [])
-        self.extra_system = extra or None
         for name in missing:
             console.print(f"[yellow]![/yellow] 프롬프트를 찾지 못했습니다: {name}")
+        directive = think_directive(think, think_hard)
+        self.extra_system = "\n\n".join(x for x in (extra, directive) if x) or None
         self.memory_store = MemoryStore(root)
         self._refresh_memory()
         self.compact_at = int((load_config().context or 32000) * 0.7)
@@ -386,6 +390,10 @@ def chat(
     prompts: list[str] = typer.Option(
         [], "--prompt", "-p", help="`.agent/prompts/<이름>.md` 재사용 지시문을 얹는다 (반복 가능)."
     ),
+    think: bool = typer.Option(False, "--think", help="답 전에 단계적으로 추론하도록 유도."),
+    think_hard: bool = typer.Option(
+        False, "--think-hard", help="여러 접근 비교·반례 탐색까지 더 깊게 추론."
+    ),
 ) -> None:
     """대화형으로 에이전트와 작업한다."""
     root_path = root.resolve()
@@ -430,6 +438,8 @@ def chat(
         use_context=not no_context,
         use_map=not no_map,
         prompts=prompts,
+        think=think,
+        think_hard=think_hard,
         resume=resume_data,
     )
 

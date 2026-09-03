@@ -48,6 +48,27 @@ DEFAULT_SYSTEM_PROMPT = """\
 """
 
 
+THINK_PROMPT = (
+    "답을 내기 전에, 무엇을 확인해야 하는지 먼저 짚고 단계적으로 근거를 따져봅니다. "
+    "불확실한 부분은 추측하지 말고 도구로 확인합니다."
+)
+
+THINK_HARD_PROMPT = (
+    "이 작업은 신중을 요합니다. 서두르지 말고, 가능한 접근을 2가지 이상 떠올려 "
+    "장단점을 비교하고, 각 방안의 반례·부작용·엣지 케이스를 능동적으로 찾습니다. "
+    "충분히 조사한 뒤에 결론을 내고, 근거를 간단히 남깁니다."
+)
+
+
+def think_directive(think: bool, think_hard: bool) -> str:
+    """--think / --think-hard 에 해당하는 추가 지시문 (없으면 빈 문자열)."""
+    if think_hard:
+        return THINK_HARD_PROMPT
+    if think:
+        return THINK_PROMPT
+    return ""
+
+
 PLAN_MODE_PROMPT = """\
 지금은 계획 모드입니다. 파일을 수정하거나 명령을 실행하지 마세요.
 읽기·검색 도구(list_dir, read_file, glob, grep)로만 코드베이스를 조사한 뒤,

@@ -71,3 +71,34 @@ def test_agent_p_옵션이_시스템프롬프트에_주입(
     assert res.exit_code == 0
     sys_msg = backend.received[0][0]
     assert sys_msg.role == "system" and "SENTINEL_규칙_지문" in sys_msg.content
+
+
+def test_think_directive() -> None:
+    from gigachanie.loop.prompt import (
+        THINK_HARD_PROMPT,
+        THINK_PROMPT,
+        think_directive,
+    )
+
+    assert think_directive(False, False) == ""
+    assert think_directive(True, False) == THINK_PROMPT
+    assert think_directive(False, True) == THINK_HARD_PROMPT
+    assert think_directive(True, True) == THINK_HARD_PROMPT
+
+
+def test_agent_think_플래그가_프롬프트에_반영(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import subprocess
+
+    from gigachanie.loop.prompt import THINK_HARD_PROMPT
+
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    backend = ScriptedBackend([text_response("끝")])
+    monkeypatch.setattr(amod, "build_backend", lambda *a, **k: backend)
+    res = runner.invoke(
+        app,
+        ["agent", "-C", str(tmp_path), "--no-context", "--no-map", "--think-hard", "일해"],
+    )
+    assert res.exit_code == 0
+    assert THINK_HARD_PROMPT[:20] in backend.received[0][0].content

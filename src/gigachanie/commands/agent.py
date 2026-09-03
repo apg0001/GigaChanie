@@ -27,6 +27,7 @@ from gigachanie.loop.builtin_tools import build_registry
 from gigachanie.loop.checkpoint import CheckpointStore
 from gigachanie.loop.hooks import HookRunner
 from gigachanie.loop.procman import ProcessManager
+from gigachanie.loop.prompt import think_directive
 from gigachanie.loop.runlog import RunLogger, git_changed_files
 from gigachanie.loop.sandbox import detect_sandbox
 from gigachanie.loop.tools import ToolContext
@@ -143,6 +144,10 @@ def agent(
     prompts: list[str] = typer.Option(
         [], "--prompt", "-p", help="`.agent/prompts/<이름>.md` 재사용 지시문을 얹는다 (반복 가능)."
     ),
+    think: bool = typer.Option(False, "--think", help="답 전에 단계적으로 추론하도록 유도."),
+    think_hard: bool = typer.Option(
+        False, "--think-hard", help="여러 접근 비교·반례 탐색까지 더 깊게 추론."
+    ),
 ) -> None:
     """도구를 사용해 코드베이스를 조사하거나 수정한다."""
     task_text = " ".join(task)
@@ -201,6 +206,9 @@ def agent(
     extra_system, missing_prompts = load_prompts(ctx.root, prompts)
     for name in missing_prompts:
         console.print(f"[yellow]![/yellow] 프롬프트를 찾지 못했습니다: {name}")
+    think_extra = think_directive(think, think_hard)
+    if think_extra:
+        extra_system = f"{extra_system}\n\n{think_extra}".strip()
     exp = expand_refs(task_text, ctx.root)
     task_text = exp.text
     task_images = exp.images
