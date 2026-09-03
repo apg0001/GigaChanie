@@ -74,6 +74,7 @@
 - `giga eval` 태스크셋 3 → 15종(이름변경·타입힌트·죽은코드·docstring·함수추출·설정·CLI·상수·테스트작성·파일핸들·빈리스트·기하). 판정 `file_absent_text` 추가 (#50, J2)
 - `giga eval` 회귀 게이트 — 같은 모델의 통과율을 `.agent/eval-history.jsonl` 에 기록, 직전 대비 하락하면 종료코드 2 (`--no-history` 로 끔) (#50, J4)
 - `giga chat` 자동완성 — `/` 입력 시 슬래시 명령(+커스텀), `@` 입력 시 워크스페이스 파일·디렉터리 (#50)
+- VS Code 확장 — 답변에 나온 변경 파일 옆 `(diff)` 로 HEAD 대비 변경을 diff 뷰로, 입력창에서 `@` 뒤 파일명 자동완성(↑↓/Tab) (#51, I5)
 
 ### 변경
 - `agent`/`chat` 의 `--mode` 기본값이 `suggest` 고정 → permissions.yaml 의 `mode` 값 (없으면 suggest)
