@@ -24,6 +24,9 @@ VS Code 에서 이 폴더를 열고 F5 (Extension Development Host) 로 실행�
 - 활동 표시줄의 **GigaChanie** 뷰에서 대화형으로 에이전트 실행
 - 에이전트 이벤트(도구 호출/결과/최종 답변) 실시간 스트리밍
 - `suggest` 모드에서 쓰기/셸 실행 시 뷰 안에서 **허용/거부** 승인
+- `ask_user` 명확화 질문은 QuickPick(+직접 입력)으로 응답
+- 상태 표시줄에 모델·승인 모드·실행 상태 표시
+- 답변에 나온 변경 파일을 클릭하면 에디터에서 열림
 - 명령: `GigaChanie: 새 세션`, `GigaChanie: 작업 실행…`, `GigaChanie: 실행 취소`,
   `GigaChanie: 브리지 재시작`
 - 설정: `gigachanie.command`, `gigachanie.mode`, `gigachanie.write`,
@@ -37,10 +40,13 @@ VS Code 에서 이 폴더를 열고 F5 (Extension Development Host) 로 실행�
 | --- | --- | --- |
 | `initialize` | → | 버전/프로토콜/cwd |
 | `session/new` | → | `{root, write, web, mode, maxSteps}` → `{sessionId, model, tools, mode}` |
+| `session/info` | → | 현재 모델·모드·도구·실행 여부·턴 수 |
 | `session/prompt` | → | `{sessionId, text}` → `{ok, finalText, stopReason, steps, tokens, changedFiles}` |
 | `session/cancel` | → | 실행 중인 프롬프트 취소 |
 | `session/approve` | → | `{sessionId, requestId, decision}` (allow/deny/always) |
+| `session/answer` | → | `{sessionId, requestId, answer}` — `ask_user` 질문 응답 |
 | `session/close` | → | 세션 종료 |
 | `shutdown` | → | 브리지 종료 |
 | `session/event` | ← | AgentEvent 스트림 `{kind, text, toolName, isError, step}` |
 | `session/approval` | ← | `{requestId, kind, summary, detail, path}` |
+| `session/ask` | ← | `{requestId, question, options, allowCustom}` |

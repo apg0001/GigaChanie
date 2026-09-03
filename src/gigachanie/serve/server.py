@@ -65,10 +65,18 @@ class _Session:
     root: Path
     backend: Any
     writable: bool
+    mode: str = "suggest"
     agent: Agent | None = None
+    hooks: Any = None
     cancel: threading.Event = field(default_factory=threading.Event)
     approvals: dict[str, queue.Queue[str]] = field(default_factory=dict)
+    asks: dict[str, queue.Queue[str]] = field(default_factory=dict)
     worker: threading.Thread | None = None
+
+    def release_waiters(self) -> None:
+        for q in [*self.approvals.values(), *self.asks.values()]:
+            with contextlib.suppress(queue.Full):
+                q.put_nowait("")
 
 
 def _event_dict(sid: str, ev: AgentEvent) -> dict[str, Any]:
@@ -225,6 +233,34 @@ class RpcServer:
 
         return approve
 
+    def _make_ask_user(
+        self, sess: _Session
+    ) -> Callable[[str, list[str], bool], str]:
+        def ask(question: str, options: list[str], allow_custom: bool) -> str:
+            if sess.cancel.is_set():
+                return ""
+            rid = uuid.uuid4().hex[:12]
+            q: queue.Queue[str] = queue.Queue(maxsize=1)
+            sess.asks[rid] = q
+            self._notify(
+                "session/ask",
+                {
+                    "sessionId": sess.id,
+                    "requestId": rid,
+                    "question": question,
+                    "options": list(options),
+                    "allowCustom": allow_custom,
+                },
+            )
+            try:
+                return q.get(timeout=_APPROVAL_TIMEOUT)
+            except queue.Empty:
+                return ""
+            finally:
+                sess.asks.pop(rid, None)
+
+        return ask
+
     def _build_agent(
         self, sess: _Session, mode: ApprovalMode, *, web: bool, max_steps: int
     ) -> Agent:
@@ -243,12 +279,14 @@ class RpcServer:
             deny_paths=perms.effective_deny_paths(),
         )
         hooks = HookRunner.load(root)
+        sess.hooks = hooks if hooks.enabled else None
         ctx = ToolContext(
             root=root,
             policy=policy,
             checkpoints=CheckpointStore(root) if sess.writable else None,
             procman=ProcessManager(root) if sess.writable else None,
-            hooks=hooks if hooks.enabled else None,
+            ask_user=self._make_ask_user(sess),
+            hooks=sess.hooks,
         )
         compact_at = int((load_config().context or 32000) * 0.7)
         return Agent(
@@ -264,9 +302,10 @@ class RpcServer:
 
     def _close_session(self, sess: _Session) -> None:
         sess.cancel.set()
-        for q in list(sess.approvals.values()):
-            with contextlib.suppress(queue.Full):
-                q.put_nowait("deny")
+        sess.release_waiters()
+        if sess.hooks is not None:
+            with contextlib.suppress(Exception):
+                sess.hooks.fire("stop")
         with contextlib.suppress(Exception):
             run_sync(sess.backend.close())
         if sess.agent is not None and sess.agent.ctx.procman is not None:
@@ -304,9 +343,16 @@ class RpcServer:
             raise RpcError(-32000, str(exc)) from None
 
         sess = _Session(
-            id=uuid.uuid4().hex[:12], root=root, backend=backend, writable=writable
+            id=uuid.uuid4().hex[:12],
+            root=root,
+            backend=backend,
+            writable=writable,
+            mode=mode.value,
         )
         sess.agent = self._build_agent(sess, mode, web=web, max_steps=max_steps)
+        if sess.hooks is not None:
+            with contextlib.suppress(Exception):
+                sess.hooks.fire("session_start")
         self._sessions[sess.id] = sess
         return {
             "sessionId": sess.id,
@@ -316,6 +362,32 @@ class RpcServer:
             "writable": writable,
             "root": str(root),
         }
+
+    def _m_session_info(self, params: dict[str, Any], mid: Any) -> dict[str, Any]:
+        sess = self._require(params)
+        return {
+            "sessionId": sess.id,
+            "model": getattr(sess.backend, "model", ""),
+            "mode": sess.mode,
+            "writable": sess.writable,
+            "root": str(sess.root),
+            "tools": sess.agent.tools.names() if sess.agent else [],
+            "running": sess.worker is not None and sess.worker.is_alive(),
+            "turns": sum(
+                1 for m in (sess.agent.messages if sess.agent else []) if m.role == "user"
+            ),
+        }
+
+    def _m_session_answer(self, params: dict[str, Any], mid: Any) -> dict[str, Any]:
+        sess = self._require(params)
+        rid = str(params.get("requestId", ""))
+        answer = str(params.get("answer", ""))
+        q = sess.asks.get(rid)
+        if q is None:
+            raise RpcError(-32602, "알 수 없는 requestId (만료되었을 수 있음)")
+        with contextlib.suppress(queue.Full):
+            q.put_nowait(answer)
+        return {"ok": True}
 
     def _m_session_prompt(self, params: dict[str, Any], mid: Any) -> Any:
         sess = self._require(params)
@@ -376,9 +448,7 @@ class RpcServer:
     def _m_session_cancel(self, params: dict[str, Any], mid: Any) -> dict[str, Any]:
         sess = self._require(params)
         sess.cancel.set()
-        for q in list(sess.approvals.values()):
-            with contextlib.suppress(queue.Full):
-                q.put_nowait("deny")
+        sess.release_waiters()
         return {"cancelled": True}
 
     def _m_session_approve(self, params: dict[str, Any], mid: Any) -> dict[str, Any]:
@@ -403,8 +473,10 @@ RpcServer._METHODS = {
     "initialize": RpcServer._m_initialize,
     "shutdown": RpcServer._m_shutdown,
     "session/new": RpcServer._m_session_new,
+    "session/info": RpcServer._m_session_info,
     "session/prompt": RpcServer._m_session_prompt,
     "session/cancel": RpcServer._m_session_cancel,
     "session/approve": RpcServer._m_session_approve,
+    "session/answer": RpcServer._m_session_answer,
     "session/close": RpcServer._m_session_close,
 }

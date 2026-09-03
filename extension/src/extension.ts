@@ -32,11 +32,26 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
   private client: GigaClient | null = null;
   private sessionId: string | null = null;
   private busy = false;
+  private model = "";
+  private mode = "";
   private readonly output: vscode.OutputChannel;
+  private readonly status: vscode.StatusBarItem;
 
   constructor(context: vscode.ExtensionContext) {
     this.output = vscode.window.createOutputChannel("GigaChanie");
-    context.subscriptions.push(this.output, { dispose: () => this.client?.stop() });
+    this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
+    this.status.command = "gigachanie.chat.focus";
+    this.updateStatus();
+    this.status.show();
+    context.subscriptions.push(this.output, this.status, {
+      dispose: () => this.client?.stop(),
+    });
+  }
+
+  private updateStatus(): void {
+    const label = this.model ? `${this.model} · ${this.mode}` : "미연결";
+    this.status.text = this.busy ? `$(sync~spin) GigaChanie` : `$(sparkle) GigaChanie: ${label}`;
+    this.status.tooltip = this.busy ? "실행 중…" : "GigaChanie 채팅 열기";
   }
 
   resolveWebviewView(view: vscode.WebviewView): void {
@@ -57,6 +72,21 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
       this.respondApproval(m.requestId, m.decision);
     } else if (m?.type === "cancel") {
       void this.cancel();
+    } else if (m?.type === "openFile" && typeof m.path === "string") {
+      void this.openFile(m.path);
+    }
+  }
+
+  private async openFile(rel: string): Promise<void> {
+    const root = this.workspaceRoot();
+    if (!root) {
+      return;
+    }
+    const uri = vscode.Uri.joinPath(vscode.Uri.file(root), rel);
+    try {
+      await vscode.window.showTextDocument(uri, { preview: false });
+    } catch (err: any) {
+      this.output.appendLine(`파일 열기 실패 (${rel}): ${err?.message ?? err}`);
     }
   }
 
@@ -107,6 +137,43 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
         summary: params.summary,
         detail: params.detail ?? "",
       });
+    } else if (method === "session/ask") {
+      void this.handleAsk(params);
+    }
+  }
+
+  private async handleAsk(params: any): Promise<void> {
+    if (!this.client || !this.sessionId) {
+      return;
+    }
+    const options: string[] = Array.isArray(params.options) ? params.options : [];
+    const custom = "$(edit) 직접 입력…";
+    const items = params.allowCustom ? [...options, custom] : options;
+    let answer = "";
+    if (items.length > 0) {
+      const picked = await vscode.window.showQuickPick(items, {
+        title: "GigaChanie",
+        placeHolder: params.question,
+        ignoreFocusOut: true,
+      });
+      answer = picked === custom || picked === undefined ? "" : picked;
+    }
+    if (!answer && params.allowCustom !== false) {
+      answer =
+        (await vscode.window.showInputBox({
+          title: "GigaChanie",
+          prompt: params.question,
+          ignoreFocusOut: true,
+        })) ?? "";
+    }
+    try {
+      this.client.notify("session/answer", {
+        sessionId: this.sessionId,
+        requestId: params.requestId,
+        answer,
+      });
+    } catch (err: any) {
+      this.output.appendLine(`답변 전달 실패: ${err?.message ?? err}`);
     }
   }
 
@@ -126,6 +193,9 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
       },
     );
     this.sessionId = res.sessionId;
+    this.model = res.model;
+    this.mode = res.mode;
+    this.updateStatus();
     this.post({ type: "status", text: `세션 시작 · ${res.model} · ${res.mode}`, busy: false });
     return res.sessionId;
   }
@@ -134,6 +204,7 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
 
   private setBusy(busy: boolean): void {
     this.busy = busy;
+    this.updateStatus();
     this.post({ type: "status", text: busy ? "실행 중…" : "대기", busy });
   }
 
@@ -246,7 +317,8 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
   .tool { font-family: var(--vscode-editor-font-family); font-size: 0.9em; opacity: 0.85; }
   .tool.err { color: var(--vscode-errorForeground); }
   .final { border-top: 1px dashed var(--vscode-panel-border); padding-top: 6px; }
-  .meta { opacity: 0.6; font-size: 0.85em; margin-top: 4px; }
+  .meta { opacity: 0.7; font-size: 0.85em; margin-top: 4px; }
+  .meta a { color: var(--vscode-textLink-foreground); cursor: pointer; }
   .approval { background: var(--vscode-inputValidation-warningBackground);
     border: 1px solid var(--vscode-inputValidation-warningBorder); }
   .approval pre { max-height: 180px; overflow: auto; background: var(--vscode-editor-background); padding: 6px; }
@@ -316,9 +388,22 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
       const d = add('assistant final', m.text || '(빈 응답)');
       const meta = document.createElement('div');
       meta.className = 'meta';
-      meta.textContent = '스텝 ' + m.steps + ' · ' + m.stopReason + ' · 토큰 ' + m.total +
-        (m.changed && m.changed.length ? ' · 변경 ' + m.changed.join(', ') : '');
+      meta.textContent = '스텝 ' + m.steps + ' · ' + m.stopReason + ' · 토큰 ' + m.total;
       d.appendChild(meta);
+      if (m.changed && m.changed.length) {
+        const files = document.createElement('div');
+        files.className = 'meta';
+        files.appendChild(document.createTextNode('변경: '));
+        m.changed.forEach((p, i) => {
+          if (i) files.appendChild(document.createTextNode(', '));
+          const a = document.createElement('a');
+          a.href = '#'; a.textContent = p;
+          a.addEventListener('click', (e) => { e.preventDefault();
+            vscode.postMessage({ type: 'openFile', path: p }); });
+          files.appendChild(a);
+        });
+        d.appendChild(files);
+      }
       current = null;
     }
     else if (m.type === 'approval') {
