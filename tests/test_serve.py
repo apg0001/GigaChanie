@@ -192,3 +192,88 @@ def test_shutdown(monkeypatch: pytest.MonkeyPatch) -> None:
     srv = _mk(monkeypatch, ScriptedBackend([]))
     srv.dispatch({"jsonrpc": "2.0", "id": 1, "method": "shutdown", "params": {}})
     assert srv._running is False
+
+
+def test_session_info(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    srv = _mk(monkeypatch, ScriptedBackend([]))
+    srv.dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "session/new",
+            "params": {"root": str(tmp_path), "write": True},
+        }
+    )
+    sid = _replies(srv)[1]["result"]["sessionId"]
+    srv.dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "session/info",
+            "params": {"sessionId": sid},
+        }
+    )
+    info = _replies(srv)[2]["result"]
+    assert info["writable"] is True
+    assert info["running"] is False
+    assert "write_file" in info["tools"]
+
+
+def test_ask_user_왕복(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    backend = ScriptedBackend(
+        [
+            tool_response(
+                "ask_user",
+                {"question": "어느 방향?", "options": ["A", "B"], "allow_custom": True},
+            ),
+            text_response("A 로 진행합니다."),
+        ]
+    )
+    srv = _mk(monkeypatch, backend)
+    srv.dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "session/new",
+            "params": {"root": str(tmp_path)},
+        }
+    )
+    sid = _replies(srv)[1]["result"]["sessionId"]
+    srv.dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "session/prompt",
+            "params": {"sessionId": sid, "text": "방향 정해줘"},
+        }
+    )
+    sess = srv._sessions[sid]
+
+    ask = None
+    for _ in range(100):
+        notes = _notes(srv, "session/ask")
+        if notes:
+            ask = notes[0]
+            break
+        import time
+
+        time.sleep(0.05)
+    assert ask is not None
+    assert ask["question"] == "어느 방향?" and ask["options"] == ["A", "B"]
+
+    srv.dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "session/answer",
+            "params": {"sessionId": sid, "requestId": ask["requestId"], "answer": "A"},
+        }
+    )
+    sess.worker.join(timeout=10)  # type: ignore[union-attr]
+
+    final = _replies(srv)[2]["result"]
+    assert final["ok"] is True
+    tool_results = [
+        p for p in _notes(srv, "session/event") if p.get("kind") == "tool_result"
+    ]
+    assert any("A" in (p.get("text") or "") for p in tool_results)
