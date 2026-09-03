@@ -65,7 +65,7 @@ _HELP = """\
   /steps <N>         최대 스텝 변경
   /info              현재 세션 상태
   /exit, /quit       종료
-빈 줄 입력은 무시됩니다. 종료는 /exit 또는 Ctrl-D.
+빈 줄 입력은 무시됩니다. 종료는 /exit, Ctrl-D, 또는 Ctrl-C 두 번.
 """
 
 
@@ -525,12 +525,23 @@ def chat(
         session.hooks.fire("session_start")
 
     async def _loop() -> None:
+        interrupted = 0.0
         try:
             while True:
                 try:
                     line = await pt.prompt_async("\n› ")
-                except (EOFError, KeyboardInterrupt):
+                except EOFError:
                     break
+                except KeyboardInterrupt:
+                    now = asyncio.get_event_loop().time()
+                    if now - interrupted < 2.0:
+                        break
+                    interrupted = now
+                    console.print(
+                        "[dim]한 번 더 Ctrl-C 를 누르면 종료합니다 (또는 /exit).[/dim]"
+                    )
+                    continue
+                interrupted = 0.0
                 line = line.strip()
                 if not line:
                     continue

@@ -51,18 +51,33 @@ async def _write_file(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     diff = _unified_diff(old_content, new_content, path)
     verb = "덮어쓰기" if exists else "새 파일"
     allowed, reason = ctx.policy.check(
-        ApprovalRequest(kind="write", summary=f"{verb}: {path}", detail=diff, path=str(path))
+        ApprovalRequest(
+            kind="write",
+            summary=f"{verb}: {path}",
+            detail=diff,
+            path=str(path),
+            old_content=old_content if exists else "",
+            new_content=new_content,
+        )
     )
-    if not allowed:
+    if allowed is False:
         return ToolResult.error(f"쓰기 거부됨 ({reason}): {path}")
+    if isinstance(allowed, str):
+        new_content = allowed
+        if new_content == old_content:
+            return ToolResult(content=f"변경 없음(모든 hunk 거부): {path}")
 
     ctx.snapshot(target)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(new_content, encoding="utf-8")
     added = new_content.count("\n") + 1
     removed = old_content.count("\n") + 1 if exists else 0
+    tag = " (일부 hunk)" if isinstance(allowed, str) else ""
     return ToolResult(
-        content=f"{'수정' if exists else '생성'}됨: {path} (+{added}/-{removed} 행)\n{diff[:2000]}"
+        content=(
+            f"{'수정' if exists else '생성'}됨{tag}: {path} "
+            f"(+{added}/-{removed} 행)\n{_unified_diff(old_content, new_content, path)[:2000]}"
+        )
     )
 
 
@@ -95,17 +110,26 @@ async def _apply_edit(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
             summary=f"편집: {path} ({result.method.value})",
             detail=diff,
             path=str(path),
+            old_content=old,
+            new_content=result.new_content,
         )
     )
-    if not allowed:
+    if allowed is False:
         return ToolResult.error(f"편집 거부됨 ({reason}): {path}")
+    final = allowed if isinstance(allowed, str) else result.new_content
+    if final == old:
+        return ToolResult(content=f"변경 없음(모든 hunk 거부): {path}")
 
     ctx.snapshot(target)
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(result.new_content, encoding="utf-8")
+    target.write_text(final, encoding="utf-8")
     where = f" @{result.start_line}행" if result.start_line else ""
+    tag = " (일부 hunk)" if isinstance(allowed, str) else ""
     return ToolResult(
-        content=f"편집 적용됨: {path}{where} (매칭: {result.method.value})\n{diff[:2000]}"
+        content=(
+            f"편집 적용됨{tag}: {path}{where} (매칭: {result.method.value})\n"
+            f"{_unified_diff(old, final, path)[:2000]}"
+        )
     )
 
 

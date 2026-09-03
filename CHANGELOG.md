@@ -75,6 +75,8 @@
 - `giga eval` 회귀 게이트 — 같은 모델의 통과율을 `.agent/eval-history.jsonl` 에 기록, 직전 대비 하락하면 종료코드 2 (`--no-history` 로 끔) (#50, J4)
 - `giga chat` 자동완성 — `/` 입력 시 슬래시 명령(+커스텀), `@` 입력 시 워크스페이스 파일·디렉터리 (#50)
 - VS Code 확장 — 답변에 나온 변경 파일 옆 `(diff)` 로 HEAD 대비 변경을 diff 뷰로, 입력창에서 `@` 뒤 파일명 자동완성(↑↓/Tab) (#51, I5)
+- 편집 승인에 `[h] hunk 선택` 추가 — diff 를 변경 덩어리로 쪼개 각각 y/n, 선택된 것만 파일에 적용 (#52, F3)
+- `giga chat` 프롬프트에서 Ctrl-C 를 두 번(2초 내) 눌러야 종료. 한 번이면 안내만 (실수로 세션이 날아가지 않도록) (#52)
 
 ### 변경
 - `agent`/`chat` 의 `--mode` 기본값이 `suggest` 고정 → permissions.yaml 의 `mode` 값 (없으면 suggest)

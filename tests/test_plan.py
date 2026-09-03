@@ -56,11 +56,13 @@ def test_plan_쓰기도구_없음(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
     assert not (tmp_path / "z.py").exists()
 
 
-def test_plan_실행_거부시_중단(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_plan_비대화_x_는_실행안함(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _patch(monkeypatch, ScriptedBackend([text_response("1. 아무것도 안 함")]))
+    called = []
+    monkeypatch.setattr(pmod.subprocess, "run", lambda *a, **k: called.append(a))
     res = runner.invoke(
-        app,
-        ["plan", "-C", str(tmp_path), "--no-context", "--no-map", "-x", "뭔가"],
-        input="n\n",
+        app, ["plan", "-C", str(tmp_path), "--no-context", "--no-map", "-x", "뭔가"]
     )
     assert res.exit_code == 0
+    assert called == []
+    assert "비대화" in res.stdout

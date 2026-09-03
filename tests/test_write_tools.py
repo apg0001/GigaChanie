@@ -46,6 +46,24 @@ def test_write_file_변경없음(tmp_path: Path) -> None:
     assert "변경 없음" in res.content
 
 
+def test_write_file_hunk_일부만_수락(tmp_path: Path) -> None:
+    from gigachanie.loop.hunks import apply_selected, split_hunks
+
+    (tmp_path / "a.py").write_text("a\nb\nc\nd\ne\n", encoding="utf-8")
+
+    def approver(req):
+        # 첫 hunk 만 수락
+        hunks = split_hunks(req.old_content, req.new_content)
+        return apply_selected(req.old_content, hunks, [i == 0 for i in range(len(hunks))])
+
+    pol = ApprovalPolicy(mode=ApprovalMode.SUGGEST, approver=approver)
+    ctx = ToolContext(root=tmp_path, policy=pol)
+    res = _run("write_file", {"path": "a.py", "content": "a\nB\nc\nd\nE\n"}, ctx)
+    assert not res.is_error
+    assert "일부 hunk" in res.content
+    assert (tmp_path / "a.py").read_text(encoding="utf-8") == "a\nB\nc\nd\ne\n"
+
+
 def test_run_shell_기본_명령(tmp_path: Path) -> None:
     # 허용 목록에 없는 명령 → approver=True 로 승인
     res = _run("run_shell", {"command": f'{sys.executable} -c "print(123)"'}, _ctx(tmp_path))

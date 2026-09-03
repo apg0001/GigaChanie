@@ -45,8 +45,30 @@ def _remember_rule(root: Path, req: ApprovalRequest) -> None:
         console.print(f"[dim]규칙 추가: {kind} += {rule}  ({pf})[/dim]")
 
 
+def _select_hunks(req: ApprovalRequest) -> bool | str:
+    """diff 의 각 hunk 에 대해 y/n 을 받아 선택된 것만 적용한 내용을 만든다."""
+    from gigachanie.loop.hunks import apply_selected, split_hunks
+
+    old = req.old_content or ""
+    new = req.new_content or ""
+    hunks = split_hunks(old, new)
+    if not hunks:
+        return True
+    accept: list[bool] = []
+    for i, h in enumerate(hunks, 1):
+        console.print(f"\n[bold]hunk {i}/{len(hunks)}[/bold]")
+        console.print(Syntax(h.preview(), "diff", theme="ansi_dark", word_wrap=True))
+        ans = typer.prompt("  이 hunk 적용? [y/n]", default="y", show_default=False)
+        accept.append(ans.strip().lower() in ("", "y", "yes"))
+    if all(accept):
+        return True
+    if not any(accept):
+        return False
+    return apply_selected(old, hunks, accept)
+
+
 def make_approver(root: Path) -> Approver:
-    def approve(req: ApprovalRequest) -> bool:
+    def approve(req: ApprovalRequest) -> bool | str:
         console.print()
         console.print(f"[yellow bold]승인 요청[/yellow bold] · {req.summary}")
         if req.detail:
@@ -57,20 +79,25 @@ def make_approver(root: Path) -> Approver:
         if not (sys.stdin.isatty() and sys.stdout.isatty()):
             return typer.confirm("실행할까요?", default=False)
 
-        choice = typer.prompt(
-            "[y] 실행  [n] 건너뛰기  [a] 항상 허용",
-            default="n",
-            show_default=False,
-        ).strip().lower()
+        can_hunk = (
+            req.kind == "write"
+            and req.new_content is not None
+            and req.old_content is not None
+            and req.old_content != ""
+        )
+        opts = "[y] 실행  [n] 건너뛰기  [a] 항상 허용" + ("  [h] hunk 선택" if can_hunk else "")
+        choice = typer.prompt(opts, default="n", show_default=False).strip().lower()
         if choice in ("a", "always"):
             _remember_rule(root, req)
             return True
+        if can_hunk and choice in ("h", "hunk"):
+            return _select_hunks(req)
         return choice in ("y", "yes")
 
     return approve
 
 
-def interactive_approver(req: ApprovalRequest) -> bool:
+def interactive_approver(req: ApprovalRequest) -> bool | str:
     """root 없이 쓰는 단순 승인 (테스트/폴백용)."""
     return make_approver(Path.cwd())(req)
 

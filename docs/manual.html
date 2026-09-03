@@ -1144,8 +1144,9 @@ stop:
         <li><b>셸 거부 목록</b> — 파괴적 명령은 모드와 무관하게 차단.</li>
         <li><b>보호 경로</b> — <code>.env</code>, <code>*.pem</code>, <code>id_rsa*</code>, <code>.ssh/</code>, <code>.aws/</code>, <code>credentials*.json</code> 등은 모드와 무관하게 편집·생성이 차단되고, 읽을 때 경고가 붙습니다.</li>
         <li><b>편집 허용 경로</b> — <code>permissions.yaml</code>의 <code>allow_paths</code>에 넣은 glob은 확인 없이 편집됩니다.</li>
-        <li><b>승인 프롬프트</b>는 3지선다입니다: <code>[y]</code> 실행 · <code>[n]</code> 건너뛰기 ·
-          <code>[a]</code> 항상 허용(해당 경로/명령 규칙을 <code>.agent/permissions.yaml</code>에 자동 기록).</li>
+        <li><b>승인 프롬프트</b>: <code>[y]</code> 실행 · <code>[n]</code> 건너뛰기 ·
+          <code>[a]</code> 항상 허용(규칙을 <code>.agent/permissions.yaml</code>에 자동 기록) ·
+          편집이면 <code>[h]</code> hunk 선택(변경 덩어리별 y/n, 선택된 것만 적용).</li>
         <li><code>--yolo</code> — <code>full-auto</code> + <code>--write</code> 를 한 번에. 확인 창이 전혀 뜨지 않습니다.</li>
         <li>승인 거부는 오류가 아니라 모델에게 피드백으로 전달되어 다른 방법을 찾게 합니다.</li>
         <li>쓰기 모드에서는 편집 직전 파일이 스냅샷되어 <a href="#undo"><code>giga undo</code></a>로 되돌릴 수 있습니다.</li>

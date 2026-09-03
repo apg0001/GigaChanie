@@ -89,7 +89,13 @@ def plan(
         console.print("\n[dim]실행하려면: giga plan -x \"…\"  또는  giga agent -w \"…\"[/dim]")
         return
 
-    if is_tty() and not typer.confirm("\n이 계획대로 실행할까요?", default=False):
+    if not is_tty():
+        console.print(
+            "\n[yellow]비대화 환경입니다. 계획대로 실행하려면 대화형으로 "
+            "`giga plan -x` 를 쓰거나 `giga agent -w` 로 직접 실행하세요.[/yellow]"
+        )
+        raise typer.Exit(code=0)
+    if not typer.confirm("\n이 계획대로 실행할까요?", default=False):
         raise typer.Exit(code=0)
 
     handoff = (

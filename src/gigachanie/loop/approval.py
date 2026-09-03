@@ -39,10 +39,13 @@ class ApprovalRequest:
     summary: str  # 한 줄 요약 (예: "파일 쓰기: src/foo.py")
     detail: str = ""  # diff 또는 명령 전문
     path: str = ""  # write/delete: 대상 상대경로 (경로 규칙 판정용)
+    old_content: str | None = None  # write/edit: 기존 파일 내용 (hunk 선택용)
+    new_content: str | None = None  # write/edit: 제안된 새 내용 (hunk 선택용)
 
 
-# 대화형 승인 콜백: 요청을 받아 허용 여부를 반환
-Approver = Callable[[ApprovalRequest], bool]
+# 대화형 승인 콜백: 허용이면 True, 거부면 False,
+# hunk 를 일부만 받았으면 그 결과 문자열(파일에 쓸 최종 내용)을 반환할 수 있다.
+Approver = Callable[[ApprovalRequest], "bool | str"]
 
 _DEFAULT_DENY_SHELL = [
     r"\brm\s+-rf\s+/",
@@ -98,8 +101,8 @@ class ApprovalPolicy:
     def _path_allowed(self, rel: str) -> bool:
         return _path_matches(rel, self.allow_paths)
 
-    def check(self, req: ApprovalRequest) -> tuple[bool, str]:
-        """(허용 여부, 사유)."""
+    def check(self, req: ApprovalRequest) -> tuple[bool | str, str]:
+        """(허용 여부, 사유). bool 대신 str 이면 "그 내용만 써라"(hunk 일부 수락)."""
         if req.kind in ("write", "delete") and req.path:
             rel = req.path.replace("\\", "/")
             if self.path_denied(rel):
@@ -126,7 +129,7 @@ class ApprovalPolicy:
             return True, f"{self.mode.value} 모드"
         return self._ask(req)
 
-    def _ask(self, req: ApprovalRequest) -> tuple[bool, str]:
+    def _ask(self, req: ApprovalRequest) -> tuple[bool | str, str]:
         if self.approver is None:
             return (
                 False,
@@ -134,6 +137,8 @@ class ApprovalPolicy:
                 "--auto / --yolo 옵션을 사용하세요.",
             )
         allowed = self.approver(req)
+        if isinstance(allowed, str):
+            return allowed, "일부 hunk 만 수락"
         return allowed, ("사용자 승인" if allowed else "사용자가 거부함")
 
 
