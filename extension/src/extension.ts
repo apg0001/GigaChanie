@@ -315,6 +315,8 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
   .user { background: var(--vscode-textBlockQuote-background); border-left: 3px solid var(--vscode-focusBorder); }
   .assistant { background: var(--vscode-editor-inactiveSelectionBackground); }
   .tool { font-family: var(--vscode-editor-font-family); font-size: 0.9em; opacity: 0.85; }
+  .tasks { background: var(--vscode-editor-inactiveSelectionBackground); font-size: 0.95em; }
+  .tasks > div { padding: 1px 0; }
   .tool.err { color: var(--vscode-errorForeground); }
   .final { border-top: 1px dashed var(--vscode-panel-border); padding-top: 6px; }
   .meta { opacity: 0.7; font-size: 0.85em; margin-top: 4px; }
@@ -356,6 +358,23 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
     return d;
   }
 
+  let tasksEl = null;
+  function renderTasks(text) {
+    if (!tasksEl || !tasksEl.isConnected) { tasksEl = add('tasks', ''); }
+    tasksEl.textContent = '';
+    text.split('\\n').forEach((line) => {
+      const s = line.trim();
+      const row = document.createElement('div');
+      if (s.startsWith('[x]')) { row.textContent = '✔ ' + s.slice(3).trim(); row.style.opacity = '0.6'; }
+      else if (s.startsWith('[~]')) { row.textContent = '▶ ' + s.slice(3).trim(); row.style.fontWeight = '600'; }
+      else if (s.startsWith('[ ]')) { row.textContent = '○ ' + s.slice(3).trim(); }
+      else if (s.startsWith('—')) { row.textContent = s; row.style.opacity = '0.6'; row.style.fontSize = '0.9em'; }
+      else return;
+      tasksEl.appendChild(row);
+    });
+    log.scrollTop = log.scrollHeight;
+  }
+
   function send() {
     const text = input.value.trim();
     if (!text) return;
@@ -379,8 +398,14 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
         current.textContent += m.text || '';
         log.scrollTop = log.scrollHeight;
       }
-      else if (m.kind === 'tool_call') { add('tool', '→ ' + (m.toolName || 'tool')); current = null; }
-      else if (m.kind === 'tool_result') { add('tool' + (m.isError ? ' err' : ''), (m.text || '').slice(0, 2000)); }
+      else if (m.kind === 'tool_call') {
+        if (m.toolName === 'update_tasks') { current = null; return; }
+        add('tool', '→ ' + (m.toolName || 'tool')); current = null;
+      }
+      else if (m.kind === 'tool_result') {
+        if (m.toolName === 'update_tasks' && !m.isError) { renderTasks(m.text || ''); return; }
+        add('tool' + (m.isError ? ' err' : ''), (m.text || '').slice(0, 2000));
+      }
       else if (m.kind === 'compact') { add('tool', m.text || '대화 압축'); }
       else if (m.kind === 'error') { add('tool err', m.text || '오류'); }
     }
