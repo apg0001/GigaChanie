@@ -54,6 +54,7 @@ _HELP = """\
   /memory            장기 메모리 목록
   /compact           지금까지 대화를 요약해 압축
   /undo              마지막 편집 턴을 되돌림
+  /diff [--stat|인자] 작업 트리 변경 (기본: git diff HEAD)
   /ps                실행 중인 백그라운드 프로세스 목록
   /commands          .agent/commands/*.md 커스텀 명령 목록
   /cost              이 세션 누적 토큰 사용량
@@ -232,9 +233,36 @@ class ChatSession:
             )
         elif cmd == "/steps":
             self._cmd_steps(args)
+        elif cmd == "/diff":
+            self._cmd_diff(args)
         else:
             console.print(f"[yellow]알 수 없는 명령: {cmd}[/yellow] (/help)")
         return True
+
+    def _cmd_diff(self, args: list[str]) -> None:
+        import subprocess
+
+        cmd = ["git", "-C", str(self.root), "diff"]
+        if args and args[0] == "--stat":
+            cmd.append("--stat")
+        elif not args:
+            cmd.append("HEAD")
+        else:
+            cmd += args
+        try:
+            out = subprocess.run(
+                cmd, capture_output=True, text=True, encoding="utf-8",
+                errors="replace", timeout=15, check=False,
+            ).stdout
+        except (OSError, subprocess.SubprocessError):
+            console.print("[yellow]git diff 를 실행할 수 없습니다.[/yellow]")
+            return
+        if not out.strip():
+            console.print("[dim]변경 없음.[/dim]")
+            return
+        from rich.syntax import Syntax
+
+        console.print(Syntax(out[:20000], "diff", theme="ansi_dark", word_wrap=False))
 
     def _print_info(self) -> None:
         turns = sum(1 for m in self.agent.messages if m.role == "user")

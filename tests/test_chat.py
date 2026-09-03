@@ -33,6 +33,21 @@ def test_help_와_알수없는명령은_계속(tmp_path: Path) -> None:
     assert s.handle_slash("/blah") is True
 
 
+def test_diff_명령(tmp_path: Path) -> None:
+    import subprocess
+
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=tmp_path, check=True)
+    (tmp_path / "a.txt").write_text("v1\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-qm", "x"], cwd=tmp_path, check=True)
+    (tmp_path / "a.txt").write_text("v2\n", encoding="utf-8")
+
+    s = _session(tmp_path)
+    assert s.handle_slash("/diff") is True  # 예외 없이 처리
+
+
 def test_write_토글이_도구목록에_반영(tmp_path: Path) -> None:
     s = _session(tmp_path)
     assert "write_file" not in s.agent.tools.names()

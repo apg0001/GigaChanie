@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import fnmatch
 import re
+import shutil
+import subprocess
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -108,6 +110,38 @@ async def _glob(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     return ToolResult(content=body)
 
 
+def _ripgrep(pattern: str, path_glob: str, root: Path) -> str | None:
+    """rg 가 있으면 그걸로 검색. 없거나 실패하면 None → 순수 파이썬 폴백."""
+    rg = shutil.which("rg")
+    if not rg:
+        return None
+    argv = [rg, "--line-number", "--no-heading", "--color=never", "--max-count=200"]
+    if path_glob and path_glob != "*":
+        argv += ["--glob", path_glob if "/" in path_glob else f"**/{path_glob}"]
+    argv += ["--regexp", pattern, "."]
+    try:
+        proc = subprocess.run(
+            argv,
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=20,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode not in (0, 1):  # 1 = 일치 없음
+        return None
+    lines = [ln.strip() for ln in proc.stdout.splitlines() if ln.strip()][:_MAX_MATCHES]
+    if not lines:
+        return "(일치 없음)"
+    return "\n".join(
+        f"{ln[:220]}" for ln in lines
+    ) + (f"\n... ({_MAX_MATCHES}건에서 중단)" if len(lines) >= _MAX_MATCHES else "")
+
+
 async def _grep(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     pattern = args.get("pattern")
     if not pattern:
@@ -118,6 +152,11 @@ async def _grep(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
         raise ToolError(f"잘못된 정규식: {exc}") from exc
 
     path_glob = args.get("glob") or "*"
+
+    rg_out = _ripgrep(str(pattern), str(path_glob), ctx.root)
+    if rg_out is not None:
+        return ToolResult(content=rg_out)
+
     hits: list[str] = []
     scanned = 0
     for p in _iter_files(ctx.root):

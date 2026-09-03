@@ -48,6 +48,40 @@ def test_wrap_sandbox_exec_프로파일_생성(tmp_path: Path) -> None:
     assert str(tmp_path) in text and "(deny network*)" in text
 
 
+def test_run_background_샌드박스_wrap(tmp_path: Path, monkeypatch) -> None:
+    from gigachanie.loop.approval import ApprovalMode, ApprovalPolicy
+    from gigachanie.loop.builtin_tools import build_registry
+    from gigachanie.loop.procman import ProcessManager
+    from gigachanie.loop.tools import ToolContext
+    from gigachanie.serving.base import run_sync
+
+    captured: dict = {}
+
+    def fake_start(self, cmd, *, cwd=".", wrap=None):
+        captured["wrapped"] = wrap(["/bin/sh", "-c", cmd]) if wrap else None
+
+        class H:
+            id = "x-0001"
+            pid = 111
+
+        return H()
+
+    monkeypatch.setattr(ProcessManager, "start", fake_start)
+
+    ctx = ToolContext(
+        root=tmp_path,
+        policy=ApprovalPolicy(mode=ApprovalMode.FULL_AUTO),
+        procman=ProcessManager(tmp_path),
+        sandbox=SandboxPlan(available=True, tool="firejail"),
+        allow_network=False,
+    )
+    tool = build_registry(writable=True).get("run_background")
+    res = run_sync(tool.run({"command": "npm run dev"}, ctx))
+    assert not res.is_error
+    assert captured["wrapped"][0] == "firejail"
+    assert "[firejail]" in res.content
+
+
 def test_run_shell_샌드박스_주입(tmp_path: Path, monkeypatch) -> None:
     from gigachanie.loop.approval import ApprovalMode, ApprovalPolicy
     from gigachanie.loop.builtin_tools import build_registry

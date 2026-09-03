@@ -14,10 +14,13 @@ import re
 import signal
 import subprocess
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import psutil
+
+WrapFn = Callable[[list[str]], list[str]]
 
 _LOGDIR = Path(".agent") / "logs"
 _REGISTRY = "procs.json"
@@ -81,7 +84,9 @@ class ProcessManager:
 
     # ------------------------------------------------------------- 시작/조회
 
-    def start(self, cmd: str, *, cwd: str = ".") -> ProcHandle:
+    def start(
+        self, cmd: str, *, cwd: str = ".", wrap: WrapFn | None = None
+    ) -> ProcHandle:
         self._logdir.mkdir(parents=True, exist_ok=True)
         pid_seed = f"{cmd}{time.time()}"
         proc_id = re.sub(r"\W", "", cmd.split()[0])[:8].lower() or "proc"
@@ -93,8 +98,11 @@ class ProcessManager:
         creationflags = (
             getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
         )
+        argv = _shell_argv(cmd)
+        if wrap is not None:
+            argv = wrap(argv)
         popen = subprocess.Popen(
-            _shell_argv(cmd),
+            argv,
             cwd=str(workdir),
             stdout=logf,
             stderr=subprocess.STDOUT,
