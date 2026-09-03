@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Literal
@@ -55,6 +56,33 @@ class AgentResult:
     @property
     def ok(self) -> bool:
         return self.stop_reason == "done"
+
+
+_MAX_NUDGES = 2
+_NUDGE = (
+    "방금 응답에서 도구를 호출하지 않았습니다. 코드나 계획을 본문에 써 놓는 것만으로는 "
+    "파일이 만들어지거나 명령이 실행되지 않습니다. 하려던 작업을 실제로 수행하려면 "
+    "지금 도구(write_file, apply_edit, run_shell, read_file 등)를 호출하세요. "
+    "정말로 더 할 일이 없다면 '완료'라고만 답하세요."
+)
+
+_INTENT_RE = re.compile(
+    r"(하겠습니다|해보겠습니다|하겠어요|할게요|할\s*것입니다|진행하겠|만들겠|"
+    r"생성하겠|수정하겠|실행하겠|시작하겠|열어보겠|확인해보겠|고치겠|작성하겠"
+    r"|다음\s*단계|먼저\s|이제\s)"
+)
+
+
+def _looks_unfinished(content: str, tools: ToolRegistry) -> bool:
+    """도구는 안 부르고 '할 일이 남았다'는 신호만 있는 응답인지."""
+    if not content or not content.strip():
+        return True  # 빈 응답이면 한 번 더 시켜본다
+    writing_tools = {"write_file", "apply_edit", "run_shell"} & set(tools.names())
+    if not writing_tools:
+        return False
+    if "```" in content:  # 코드/명령을 본문에 써 놓음
+        return True
+    return bool(_INTENT_RE.search(content))
 
 
 def _args_signature(call: ToolCall) -> str:
@@ -106,6 +134,7 @@ class Agent:
             self.messages.extend(history)
         self._usage = Usage()
         self._call_counts: dict[str, int] = {}
+        self._nudges = 0
 
     # ------------------------------------------------------------------ run
 
@@ -125,6 +154,7 @@ class Agent:
         stop: StopReason = "max_steps"
         final_text = ""
         self._usage = Usage()  # 이 run() 동안의 사용량
+        self._nudges = 0
         step = 0
 
         for step in range(1, self.max_steps + 1):
@@ -194,6 +224,19 @@ class Agent:
                 )
 
             if not resp.has_tool_calls:
+                if self._nudges < _MAX_NUDGES and _looks_unfinished(
+                    resp.message.content, self.tools
+                ):
+                    self._nudges += 1
+                    self.messages.append(Message.user(_NUDGE))
+                    emit(
+                        AgentEvent(
+                            kind="error",
+                            text="도구 호출 없이 설명만 함 — 실제 실행을 요청",
+                            step=step,
+                        )
+                    )
+                    continue
                 final_text = resp.message.content
                 stop = "done"
                 break

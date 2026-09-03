@@ -5,7 +5,7 @@ from pathlib import Path
 from conftest import ScriptedBackend, text_response, tool_response
 
 from gigachanie.loop.agent import Agent, AgentEvent
-from gigachanie.loop.builtin_tools import default_readonly_registry
+from gigachanie.loop.builtin_tools import build_registry, default_readonly_registry
 from gigachanie.loop.tools import ToolContext, ToolRegistry, ToolResult
 from gigachanie.serving.base import run_sync
 
@@ -79,6 +79,51 @@ def test_ctrl_c_는_깔끔하게_중단(tmp_path: Path) -> None:
     result = run_sync(agent.run("작업"))
     assert result.stop_reason == "cancelled"
     assert "중단" in result.final_text
+
+
+def test_도구없이_설명만하면_한번_더_시킨다(tmp_path: Path) -> None:
+    (tmp_path / "a.txt").write_text("old", encoding="utf-8")
+    backend = ScriptedBackend(
+        [
+            text_response("네, a.txt 를 수정하겠습니다."),  # 의도만, 도구 없음 → 넛지
+            tool_response("write_file", {"path": "a.txt", "content": "new"}),
+            text_response("완료했습니다."),
+        ]
+    )
+    from gigachanie.loop.approval import ApprovalMode, ApprovalPolicy
+
+    ctx = ToolContext(
+        root=tmp_path, policy=ApprovalPolicy(mode=ApprovalMode.FULL_AUTO)
+    )
+    agent = Agent(backend, build_registry(writable=True), ctx)
+    result = run_sync(agent.run("a.txt 를 new 로 바꿔"))
+    assert result.ok
+    assert (tmp_path / "a.txt").read_text(encoding="utf-8") == "new"
+
+
+def test_넛지는_최대_2회(tmp_path: Path) -> None:
+    backend = ScriptedBackend(
+        [text_response("코드를 작성하겠습니다.\n```python\nx=1\n```") for _ in range(6)]
+    )
+    from gigachanie.loop.approval import ApprovalMode, ApprovalPolicy
+
+    ctx = ToolContext(
+        root=tmp_path, policy=ApprovalPolicy(mode=ApprovalMode.FULL_AUTO)
+    )
+    agent = Agent(backend, build_registry(writable=True), ctx, max_steps=10)
+    result = run_sync(agent.run("작업"))
+    # 넛지 2회 후엔 그냥 done 으로 끝난다 (무한 루프 아님)
+    assert result.stop_reason == "done"
+    assert result.steps <= 4
+
+
+def test_읽기전용이면_넛지_안함(tmp_path: Path) -> None:
+    from gigachanie.loop.builtin_tools import default_readonly_registry
+
+    backend = ScriptedBackend([text_response("설명하겠습니다.\n```py\nx\n```")])
+    agent = Agent(backend, default_readonly_registry(), _ctx(tmp_path))
+    result = run_sync(agent.run("설명해"))
+    assert result.stop_reason == "done" and result.steps == 1
 
 
 def test_반복_가드(tmp_path: Path) -> None:
