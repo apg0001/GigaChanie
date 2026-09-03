@@ -556,6 +556,8 @@ python -m pip install -e ".[dev]"
               <tr><td><code>--mcp</code></td><td>.mcp.json 의 MCP 서버 도구 활성화</td></tr>
               <tr><td><code>--json</code></td><td>결과를 JSON(ok·steps·tokens·changed_files)으로 출력 (CI용)</td></tr>
               <tr><td><code>--sandbox</code> / <code>--no-network</code></td><td>셸을 OS 샌드박스로 격리 (Linux/macOS) / 망 차단</td></tr>
+              <tr><td><code>-p</code>, <code>--prompt</code></td><td><code>.agent/prompts/&lt;이름&gt;.md</code> 재사용 지시문을 얹음 (반복 가능)</td></tr>
+              <tr><td><code>--think</code> / <code>--think-hard</code></td><td>답 전에 단계적 추론 / 여러 접근 비교·반례 탐색까지 유도</td></tr>
             </tbody>
           </table>
           <pre><code><span class="p">giga</span> agent -w --mode auto-edit "모든 함수에 타입 힌트를 추가해줘"
