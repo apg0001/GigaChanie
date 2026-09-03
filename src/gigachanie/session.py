@@ -29,6 +29,8 @@ def _msg_to_dict(m: Message) -> dict[str, Any]:
         d["tool_call_id"] = m.tool_call_id
     if m.name:
         d["name"] = m.name
+    if m.images:
+        d["images"] = list(m.images)
     return d
 
 
@@ -42,6 +44,7 @@ def _msg_from_dict(d: dict[str, Any]) -> Message:
         ],
         tool_call_id=d.get("tool_call_id"),
         name=d.get("name"),
+        images=list(d.get("images", [])),
     )
 
 

@@ -59,6 +59,19 @@ def test_store_tool_call_직렬화(tmp_path: Path) -> None:
     assert loaded.messages[1].tool_call_id == "c1"
 
 
+def test_store_이미지_첨부_라운드트립(tmp_path: Path) -> None:
+    store = SessionStore(tmp_path)
+    data = SessionData(id="img1")
+    data.messages = [
+        Message.user("이 이미지 봐줘", ["data:image/png;base64,AAAA"]),
+        Message.assistant("확인했어요"),
+    ]
+    store.save(data)
+    loaded = store.load("img1")
+    assert loaded is not None
+    assert loaded.messages[0].images == ["data:image/png;base64,AAAA"]
+
+
 def test_latest(tmp_path: Path) -> None:
     store = SessionStore(tmp_path)
     store.save(SessionData(id="old", title="옛날"))
