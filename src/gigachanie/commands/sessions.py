@@ -6,13 +6,13 @@ import time
 from pathlib import Path
 
 import typer
-from rich.console import Console
 from rich.markup import escape
 from rich.table import Table
 
 from gigachanie.session import SessionStore
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 app = typer.Typer(name="sessions", help="대화 세션 목록 / 삭제.", no_args_is_help=True)
 
 

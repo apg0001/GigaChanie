@@ -9,9 +9,9 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 
-from rich.console import Console
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 
 
 def is_tty() -> bool:
@@ -32,6 +32,11 @@ def pick(
         return None
     if not _is_tty():
         return None
+
+    from gigachanie.ui import plain
+
+    if plain():  # 스크린리더: 번호 입력이 더 안전
+        return _numbered_fallback(title, options)
 
     try:
         from prompt_toolkit.shortcuts import radiolist_dialog

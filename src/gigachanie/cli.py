@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import typer
-from rich.console import Console
 
 from gigachanie import __version__
 from gigachanie.commands import agent as agent_cmd
@@ -33,6 +32,7 @@ from gigachanie.commands import serve as serve_cmd
 from gigachanie.commands import sessions as sessions_cmd
 from gigachanie.commands import setup as setup_cmd
 from gigachanie.commands import undo as undo_cmd
+from gigachanie.ui import make_console
 
 app = typer.Typer(
     name="giga",
@@ -40,7 +40,7 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
 )
-console = Console()
+console = make_console()
 
 app.command("setup")(setup_cmd.setup)
 app.command("doctor")(doctor_cmd.doctor)

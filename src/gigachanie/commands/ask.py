@@ -8,13 +8,13 @@ from __future__ import annotations
 import sys
 
 import typer
-from rich.console import Console
 
 from gigachanie.config import load_config
 from gigachanie.serving import Message, build_backend
 from gigachanie.serving.base import BackendError, run_sync
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 
 
 def ping() -> None:

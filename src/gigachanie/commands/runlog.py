@@ -7,10 +7,11 @@ from pathlib import Path
 from typing import Any
 
 import typer
-from rich.console import Console
 from rich.table import Table
 
-console = Console()
+from gigachanie.ui import make_console
+
+console = make_console()
 
 _FILE = Path(".agent") / "logs" / "runs.jsonl"
 

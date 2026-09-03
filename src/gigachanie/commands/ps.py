@@ -5,13 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import typer
-from rich.console import Console
 from rich.markup import escape
 from rich.table import Table
 
 from gigachanie.loop.procman import ProcessManager
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 
 
 def ps(

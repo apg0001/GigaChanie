@@ -10,13 +10,13 @@ import subprocess
 from pathlib import Path
 
 import typer
-from rich.console import Console
 from rich.panel import Panel
 
 from gigachanie.serving.base import BackendError, Message, run_sync
 from gigachanie.serving.factory import build_backend
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 
 _MAX_DIFF = 14_000
 

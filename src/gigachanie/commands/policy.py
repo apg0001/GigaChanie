@@ -5,12 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import typer
-from rich.console import Console
 
 from gigachanie.loop.approval import ApprovalMode, build_policy
 from gigachanie.permissions import load_permissions
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 
 
 def policy(

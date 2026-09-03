@@ -6,13 +6,13 @@ import sys
 from pathlib import Path
 
 import typer
-from rich.console import Console
 from rich.markup import escape
 from rich.table import Table
 
 from gigachanie.context.memory import MemoryStore
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 app = typer.Typer(name="memory", help="장기 메모리 조회 / 추가 / 삭제.", no_args_is_help=True)
 
 

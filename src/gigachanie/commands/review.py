@@ -7,14 +7,14 @@ import sys
 from pathlib import Path
 
 import typer
-from rich.console import Console
 
 from gigachanie.config import Config, load_config
 from gigachanie.orchestra.pipeline import load_pipeline_config, review_diff
 from gigachanie.serving.base import BackendError, run_sync
 from gigachanie.serving.factory import build_backend
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 
 
 def _git_diff(root: Path, staged: bool, rng: str) -> str:

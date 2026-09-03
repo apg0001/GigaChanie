@@ -5,13 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import typer
-from rich.console import Console
 from rich.table import Table
 
 from gigachanie.mcp import MCPManager, load_mcp_config
 from gigachanie.serving.base import run_sync
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 app = typer.Typer(name="mcp", help="MCP 서버 설정 / 도구 확인.", no_args_is_help=True)
 
 

@@ -5,12 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import typer
-from rich.console import Console
 from rich.table import Table
 
 from gigachanie.orchestra.router import classify_task, load_orchestra_config
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 
 
 def route(

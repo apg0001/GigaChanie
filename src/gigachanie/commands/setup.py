@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import typer
-from rich.console import Console
 
 from gigachanie.commands._pick import is_tty
 from gigachanie.serving import ollama_setup
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 
 
 def setup(

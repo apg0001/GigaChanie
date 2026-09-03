@@ -6,11 +6,11 @@ import json
 from pathlib import Path
 
 import typer
-from rich.console import Console
 
 from gigachanie.context.repo_map import build_repo_map
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 
 
 def repo_map_cmd(

@@ -12,7 +12,6 @@ import typer
 from platformdirs import user_config_path
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
-from rich.console import Console
 from rich.markup import escape
 
 from gigachanie.commands._agentui import ask_user, make_approver, make_event_printer
@@ -38,8 +37,9 @@ from gigachanie.permissions import load_permissions
 from gigachanie.serving.base import Backend, BackendError, run_sync
 from gigachanie.serving.factory import build_backend
 from gigachanie.session import SessionData, SessionStore
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 
 _HELP = """\
 슬래시 명령:

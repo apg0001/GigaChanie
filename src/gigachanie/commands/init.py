@@ -8,9 +8,10 @@ from collections import Counter
 from pathlib import Path
 
 import typer
-from rich.console import Console
 
-console = Console()
+from gigachanie.ui import make_console
+
+console = make_console()
 
 _LANG_EXT = {
     ".py": "Python",
