@@ -327,7 +327,7 @@
     </p>
     <div class="meta">
       <span><b>버전</b> 0.0.1</span>
-      <span><b>최종 업데이트</b> 2026-09-02</span>
+      <span><b>최종 업데이트</b> 2026-09-03</span>
       <span><b>반영 범위</b> 이슈 #1–#22, #24–#29 (부분 포함) · CLI 22개 · 멀티모달 입력</span>
       <span><b>실행 명령</b> <code>giga</code></span>
     </div>
@@ -359,6 +359,7 @@
       <li><a href="#git">giga commit · pr</a></li>
       <li><a href="#runlog">giga runlog</a></li>
       <li><a href="#self">giga self</a></li>
+      <li><a href="#serve">giga serve · VS Code</a></li>
       <li><a href="#ext">커스텀 명령 · 훅</a></li>
       <li><a href="#tools">도구</a></li>
       <li><a href="#approval">승인 모드</a></li>
@@ -930,6 +931,35 @@ stop:
             설명을 생략하면 테스트·<code>ruff</code>·<code>mypy</code>를 돌려 실패를 고칩니다.
             <code>-y</code>는 승인 없이 자동 실행(<code>--yolo</code>), <code>--show</code>는 명령만 출력.
             소스(<code>pip install -e .</code>) 설치에서만 동작합니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="serve">
+      <h2>giga serve · VS Code 확장</h2>
+      <p class="section-note">에디터·GUI 가 붙는 stdio JSON-RPC 2.0 브리지입니다.
+        <code>stdout</code> 에는 JSON-RPC 만 나가고 로그는 <code>stderr</code> 로 갑니다.
+        VS Code 확장(<code>extension/</code>)이 이 프로세스를 자식으로 띄워 통신합니다.</p>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga serve</span></div>
+        <div class="cmd__body">
+          <table>
+            <tbody>
+              <tr><td><code>initialize</code></td><td>→ 버전·프로토콜·cwd</td></tr>
+              <tr><td><code>session/new</code></td><td><code>{root, write, web, mode, maxSteps}</code> → <code>{sessionId, model, tools, mode}</code></td></tr>
+              <tr><td><code>session/prompt</code></td><td><code>{sessionId, text}</code> → <code>{ok, finalText, stopReason, steps, tokens, changedFiles}</code>. 실행 중 <code>session/event</code> 알림 스트리밍</td></tr>
+              <tr><td><code>session/cancel</code></td><td>실행 중인 프롬프트 취소</td></tr>
+              <tr><td><code>session/approve</code></td><td><code>{sessionId, requestId, decision}</code> — allow / deny / always</td></tr>
+              <tr><td><code>session/close</code> · <code>shutdown</code></td><td>세션 종료 · 브리지 종료</td></tr>
+              <tr><td>← <code>session/event</code></td><td>AgentEvent 스트림 <code>{kind, text, toolName, isError, step}</code></td></tr>
+              <tr><td>← <code>session/approval</code></td><td><code>{requestId, kind, summary, detail, path}</code> — 승인 요청</td></tr>
+            </tbody>
+          </table>
+          <p><b>VS Code 확장</b>: 활동표시줄의 <b>GigaChanie</b> 뷰에서 대화형 실행, 이벤트 실시간
+            표시, <code>suggest</code> 모드에서 뷰 안 허용/거부 승인. 설정
+            <code>gigachanie.command</code>(기본 <code>giga</code>) · <code>gigachanie.mode</code> ·
+            <code>gigachanie.write</code> · <code>gigachanie.web</code> · <code>gigachanie.maxSteps</code>.
+            빌드: <code>cd extension &amp;&amp; npm install &amp;&amp; npm run compile</code>, F5 로 실행.</p>
         </div>
       </div>
     </section>
