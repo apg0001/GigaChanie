@@ -10,6 +10,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("gigachanie.ask", () => provider.ask()),
     vscode.commands.registerCommand("gigachanie.cancel", () => provider.cancel()),
     vscode.commands.registerCommand("gigachanie.restart", () => provider.restart()),
+    vscode.commands.registerCommand("gigachanie.resume", () => provider.resumeSession()),
   );
 }
 
@@ -205,27 +206,78 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  private pendingResume: string | null = null;
+
   private async ensureSession(client: GigaClient, root: string): Promise<string> {
     if (this.sessionId) {
       return this.sessionId;
     }
     const cfg = vscode.workspace.getConfiguration("gigachanie");
-    const res = await client.request<{ sessionId: string; model: string; mode: string }>(
-      "session/new",
-      {
-        root,
-        write: cfg.get<boolean>("write", true),
-        web: cfg.get<boolean>("web", false),
-        mode: cfg.get<string>("mode", "suggest"),
-        maxSteps: cfg.get<number>("maxSteps", 20),
-      },
-    );
+    const think = cfg.get<string>("think", "off");
+    const res = await client.request<{
+      sessionId: string; model: string; mode: string; resumedTurns?: number;
+    }>("session/new", {
+      root,
+      write: cfg.get<boolean>("write", true),
+      web: cfg.get<boolean>("web", false),
+      mode: cfg.get<string>("mode", "suggest"),
+      maxSteps: cfg.get<number>("maxSteps", 20),
+      prompts: cfg.get<string[]>("prompts", []),
+      think: think === "think",
+      thinkHard: think === "think-hard",
+      resume: this.pendingResume ?? undefined,
+    });
+    this.pendingResume = null;
     this.sessionId = res.sessionId;
     this.model = res.model;
     this.mode = res.mode;
     this.updateStatus();
-    this.post({ type: "status", text: `세션 시작 · ${res.model} · ${res.mode}`, busy: false });
+    const rt = res.resumedTurns ? ` · ${res.resumedTurns}턴 이어감` : "";
+    this.post({ type: "status", text: `세션 시작 · ${res.model} · ${res.mode}${rt}`, busy: false });
     return res.sessionId;
+  }
+
+  async resumeSession(): Promise<void> {
+    const root = this.workspaceRoot();
+    if (!root) {
+      vscode.window.showErrorMessage("워크스페이스 폴더를 먼저 열어주세요.");
+      return;
+    }
+    const client = this.ensureClient(root);
+    let items: any[] = [];
+    try {
+      const r = await client.request<{ sessions: any[] }>("session/history", { root });
+      items = r.sessions ?? [];
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`세션 목록을 불러오지 못했습니다: ${err?.message ?? err}`);
+      return;
+    }
+    if (items.length === 0) {
+      vscode.window.showInformationMessage("저장된 세션이 없습니다.");
+      return;
+    }
+    const pick = await vscode.window.showQuickPick(
+      items.map((s) => ({
+        label: s.title || "(제목 없음)",
+        description: `${s.turns}턴 · ${s.model ?? ""}`,
+        id: s.id as string,
+      })),
+      { title: "이어갈 GigaChanie 세션" },
+    );
+    if (!pick) {
+      return;
+    }
+    if (this.client && this.sessionId) {
+      try {
+        await this.client.request("session/close", { sessionId: this.sessionId });
+      } catch {
+        /* ignore */
+      }
+    }
+    this.sessionId = null;
+    this.pendingResume = pick.id;
+    this.post({ type: "clear" });
+    this.post({ type: "status", text: `"${pick.label}" 이어감 (다음 메시지부터)`, busy: false });
   }
 
   // ------------------------------------------------------------------ 동작

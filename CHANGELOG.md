@@ -77,6 +77,9 @@
 - VS Code 확장 — 답변에 나온 변경 파일 옆 `(diff)` 로 HEAD 대비 변경을 diff 뷰로, 입력창에서 `@` 뒤 파일명 자동완성(↑↓/Tab) (#51, I5)
 - 편집 승인에 `[h] hunk 선택` 추가 — diff 를 변경 덩어리로 쪼개 각각 y/n, 선택된 것만 파일에 적용 (#52, F3)
 - `giga chat` 프롬프트에서 Ctrl-C 를 두 번(2초 내) 눌러야 종료. 한 번이면 안내만 (실수로 세션이 날아가지 않도록) (#52)
+- `giga chat` 시작 시 이어갈 수 있는 이전 세션이 있으면 안내 (`-c` 로 이어감) (#53)
+- `giga serve` `session/new` 가 `prompts`·`think`/`thinkHard`·`budget`·`resume`(세션 이어가기) 지원, 컨텍스트 예산·서브에이전트·도메인 정책도 CLI 와 동일하게 적용. `session/history` 로 저장된 세션 목록 (#53)
+- VS Code 확장 — "이전 세션 이어가기" 명령, 설정 `gigachanie.prompts`·`gigachanie.think` 추가 (#53)
 
 ### 변경
 - `agent`/`chat` 의 `--mode` 기본값이 `suggest` 고정 → permissions.yaml 의 `mode` 값 (없으면 suggest)

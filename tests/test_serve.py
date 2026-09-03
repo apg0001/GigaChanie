@@ -277,3 +277,50 @@ def test_ask_user_왕복(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Non
         p for p in _notes(srv, "session/event") if p.get("kind") == "tool_result"
     ]
     assert any("A" in (p.get("text") or "") for p in tool_results)
+
+
+def test_session_new_prompts_think(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    (tmp_path / ".agent" / "prompts").mkdir(parents=True)
+    (tmp_path / ".agent" / "prompts" / "style.md").write_text(
+        "SENTINEL_스타일_규칙", encoding="utf-8"
+    )
+    backend = ScriptedBackend([text_response("끝")])
+    srv = _mk(monkeypatch, backend)
+    srv.dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "session/new",
+            "params": {"root": str(tmp_path), "prompts": ["style"], "thinkHard": True},
+        }
+    )
+    sid = _replies(srv)[1]["result"]["sessionId"]
+    srv.dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "session/prompt",
+            "params": {"sessionId": sid, "text": "안녕"},
+        }
+    )
+    srv._sessions[sid].worker.join(timeout=10)  # type: ignore[union-attr]
+    sysmsg = backend.received[0][0]
+    assert "SENTINEL_스타일_규칙" in sysmsg.content
+    assert backend.last_reasoning == "high"
+
+
+def test_session_history(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from gigachanie.serving.base import Message
+    from gigachanie.session import SessionData, SessionStore
+
+    store = SessionStore(tmp_path)
+    d = SessionData(id="s1", title="이전 작업", model_id="m")
+    d.messages = [Message.system("x"), Message.user("뭐 했었지")]
+    store.save(d)
+
+    srv = _mk(monkeypatch, ScriptedBackend([]))
+    srv.dispatch(
+        {"jsonrpc": "2.0", "id": 1, "method": "session/history", "params": {"root": str(tmp_path)}}
+    )
+    items = _replies(srv)[1]["result"]["sessions"]
+    assert any(s["id"] == "s1" and s["title"] == "이전 작업" and s["turns"] == 1 for s in items)

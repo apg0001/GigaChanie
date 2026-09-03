@@ -36,10 +36,10 @@ VS Code 에서 이 폴더를 열고 F5 (Extension Development Host) 로 실행�
 - 상태 표시줄에 모델·승인 모드·실행 상태 표시
 - 답변에 나온 변경 파일을 클릭하면 에디터에서 열림, `(diff)` 로 HEAD 대비 변경 확인
 - 입력창에서 `@` 뒤에 파일명을 치면 워크스페이스 파일 자동완성 (↑↓/Tab)
-- 명령: `GigaChanie: 새 세션`, `GigaChanie: 작업 실행…`, `GigaChanie: 실행 취소`,
-  `GigaChanie: 브리지 재시작`
+- `GigaChanie: 이전 세션 이어가기` — 저장된 대화를 골라 이어감
+- 명령: `새 세션`, `작업 실행…`, `실행 취소`, `이전 세션 이어가기`, `브리지 재시작`
 - 설정: `gigachanie.command`, `gigachanie.mode`, `gigachanie.write`,
-  `gigachanie.web`, `gigachanie.maxSteps`
+  `gigachanie.web`, `gigachanie.maxSteps`, `gigachanie.prompts`, `gigachanie.think`
 
 ## 프로토콜
 
@@ -48,8 +48,9 @@ VS Code 에서 이 폴더를 열고 F5 (Extension Development Host) 로 실행�
 | 메서드 | 방향 | 설명 |
 | --- | --- | --- |
 | `initialize` | → | 버전/프로토콜/cwd |
-| `session/new` | → | `{root, write, web, mode, maxSteps}` → `{sessionId, model, tools, mode}` |
+| `session/new` | → | `{root, write, web, mode, maxSteps, prompts, think, thinkHard, budget, resume}` → `{sessionId, model, tools, mode, resumedTurns}` |
 | `session/info` | → | 현재 모델·모드·도구·실행 여부·턴 수 |
+| `session/history` | → | 저장된 세션 목록 (id·제목·모델·턴) |
 | `session/prompt` | → | `{sessionId, text}` → `{ok, finalText, stopReason, steps, tokens, changedFiles}` |
 | `session/cancel` | → | 실행 중인 프롬프트 취소 |
 | `session/approve` | → | `{sessionId, requestId, decision}` (allow/deny/always) |

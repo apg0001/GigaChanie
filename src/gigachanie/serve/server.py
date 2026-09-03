@@ -265,12 +265,26 @@ class RpcServer:
         return ask
 
     def _build_agent(
-        self, sess: _Session, mode: ApprovalMode, *, web: bool, max_steps: int
+        self,
+        sess: _Session,
+        mode: ApprovalMode,
+        *,
+        web: bool,
+        max_steps: int,
+        prompts: list[str] | None = None,
+        think: bool = False,
+        think_hard: bool = False,
+        budget: int = 0,
     ) -> Agent:
+        from gigachanie.context import allocate, clip, load_prompts
+        from gigachanie.loop.prompt import think_directive
+        from gigachanie.loop.subagent import register_subagent_tool
+
         root = sess.root
         perms = load_permissions(root)
+        cb = allocate(load_config().context)
         pc = load_project_context(root, root)
-        rm = build_repo_map(root, cwd=root)
+        rm = build_repo_map(root, cwd=root, budget_chars=cb.map_chars)
         mem = MemoryStore(root).index_text()
         tools = build_registry(writable=sess.writable, web=web)
         policy = build_policy(
@@ -280,6 +294,8 @@ class RpcServer:
             extra_deny_shell=perms.deny_shell,
             allow_paths=perms.allow_paths,
             deny_paths=perms.effective_deny_paths(),
+            allow_domains=perms.allow_domains,
+            deny_domains=perms.deny_domains,
         )
         hooks = HookRunner.load(root)
         sess.hooks = hooks if hooks.enabled else None
@@ -291,17 +307,31 @@ class RpcServer:
             ask_user=self._make_ask_user(sess),
             hooks=sess.hooks,
         )
+        extra, _ = load_prompts(root, prompts or [])
+        directive = think_directive(think, think_hard)
+        extra_system = "\n\n".join(x for x in (extra, directive) if x) or None
         compact_at = int((load_config().context or 32000) * 0.7)
-        return Agent(
+        agent = Agent(
             sess.backend,
             tools,
             ctx,
-            project_context=pc.text if pc and pc.found else None,
+            project_context=clip(pc.text, cb.project_chars) if pc and pc.found else None,
             repo_map=rm.text if rm and rm.found else None,
-            memory_index=mem or None,
+            memory_index=clip(mem, cb.memory_chars) or None,
+            extra_system=extra_system,
             max_steps=max_steps,
+            reasoning="high" if think_hard else ("low" if think else None),
+            token_budget=budget or None,
             compact_at=compact_at,
         )
+        register_subagent_tool(
+            tools,
+            backend=sess.backend,
+            root=root,
+            parent_ctx=ctx,
+            parent_writable=sess.writable,
+        )
+        return agent
 
     def _close_session(self, sess: _Session) -> None:
         sess.cancel.set()
@@ -335,6 +365,11 @@ class RpcServer:
         writable = bool(params.get("write", False))
         web = bool(params.get("web", False))
         max_steps = int(params.get("maxSteps", 20) or 20)
+        prompts = [str(x) for x in (params.get("prompts") or [])]
+        think = bool(params.get("think", False))
+        think_hard = bool(params.get("thinkHard", False))
+        budget = int(params.get("budget", 0) or 0)
+        resume_id = str(params.get("resume", "") or "")
         perms = load_permissions(root)
         try:
             mode = ApprovalMode.parse(str(params.get("mode") or perms.mode or "suggest"))
@@ -352,7 +387,24 @@ class RpcServer:
             writable=writable,
             mode=mode.value,
         )
-        sess.agent = self._build_agent(sess, mode, web=web, max_steps=max_steps)
+        sess.agent = self._build_agent(
+            sess,
+            mode,
+            web=web,
+            max_steps=max_steps,
+            prompts=prompts,
+            think=think,
+            think_hard=think_hard,
+            budget=budget,
+        )
+        resumed_turns = 0
+        if resume_id:
+            from gigachanie.session import SessionStore
+
+            data = SessionStore(root).load(resume_id)
+            if data is not None and len(data.messages) > 1:
+                sess.agent.messages = [sess.agent.messages[0], *data.messages[1:]]
+                resumed_turns = sum(1 for m in data.messages if m.role == "user")
         if sess.hooks is not None:
             with contextlib.suppress(Exception):
                 sess.hooks.fire("session_start")
@@ -364,7 +416,25 @@ class RpcServer:
             "mode": mode.value,
             "writable": writable,
             "root": str(root),
+            "resumedTurns": resumed_turns,
         }
+
+    def _m_session_history(self, params: dict[str, Any], mid: Any) -> dict[str, Any]:
+        from gigachanie.session import SessionStore
+
+        root = Path(str(params.get("root") or ".")).resolve()
+        if not root.is_dir():
+            raise RpcError(-32602, f"디렉터리가 아닙니다: {root}")
+        items = [
+            {
+                "id": d.id,
+                "title": d.title,
+                "model": d.model_id,
+                "turns": sum(1 for m in d.messages if m.role == "user"),
+            }
+            for d in SessionStore(root).list()
+        ]
+        return {"sessions": items}
 
     def _m_session_info(self, params: dict[str, Any], mid: Any) -> dict[str, Any]:
         sess = self._require(params)
@@ -476,6 +546,7 @@ RpcServer._METHODS = {
     "initialize": RpcServer._m_initialize,
     "shutdown": RpcServer._m_shutdown,
     "session/new": RpcServer._m_session_new,
+    "session/history": RpcServer._m_session_history,
     "session/info": RpcServer._m_session_info,
     "session/prompt": RpcServer._m_session_prompt,
     "session/cancel": RpcServer._m_session_cancel,

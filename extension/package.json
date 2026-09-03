@@ -61,12 +61,22 @@
       {
         "command": "gigachanie.restart",
         "title": "GigaChanie: 브리지 재시작"
+      },
+      {
+        "command": "gigachanie.resume",
+        "title": "GigaChanie: 이전 세션 이어가기",
+        "icon": "$(history)"
       }
     ],
     "menus": {
       "view/title": [
         {
           "command": "gigachanie.newSession",
+          "when": "view == gigachanie.chat",
+          "group": "navigation"
+        },
+        {
+          "command": "gigachanie.resume",
           "when": "view == gigachanie.chat",
           "group": "navigation"
         },
@@ -109,6 +119,18 @@
           "type": "number",
           "default": 20,
           "description": "에이전트 루프 최대 반복 스텝."
+        },
+        "gigachanie.prompts": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": ".agent/prompts/<이름>.md 재사용 지시문을 세션에 얹습니다."
+        },
+        "gigachanie.think": {
+          "type": "string",
+          "enum": ["off", "think", "think-hard"],
+          "default": "off",
+          "description": "사고 모드: off · think(단계적 추론) · think-hard(여러 접근 비교)."
         }
       }
     }

@@ -521,6 +521,14 @@ def chat(
             f"[dim]커스텀 명령: {', '.join('/' + n for n in session.custom_commands)}[/dim]"
         )
     session._print_info()
+    if resume_data is None and not cont and not resume_id:
+        prev = SessionStore(root_path).latest()
+        if prev is not None and prev.id != session.session.id:
+            title = prev.title or "(제목 없음)"
+            console.print(
+                f"[dim]이전 세션 있음: {title[:50]} · "
+                f"이어가려면 종료 후 `giga chat -c`[/dim]"
+            )
     if session.hooks.enabled:
         session.hooks.fire("session_start")
 
