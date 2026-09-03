@@ -354,7 +354,7 @@
       <li><a href="#memory">giga memory</a></li>
       <li><a href="#mcp">giga mcp</a></li>
       <li><a href="#eval">giga eval</a></li>
-      <li><a href="#route">giga route</a></li>
+      <li><a href="#route">giga route · ensemble · divide</a></li>
       <li><a href="#review">giga review</a></li>
       <li><a href="#render">giga render</a></li>
       <li><a href="#git">giga commit · pr</a></li>
@@ -802,7 +802,35 @@ router:
     typo: fast
     debug: heavy
   default: heavy</code></pre>
-          <p>앙상블 투표·작업 분할은 이후 단계(이슈 #17b)입니다.</p>
+        </div>
+      </div>
+
+      <h3>giga ensemble — 여러 모델에게 묻고 종합</h3>
+      <p>같은 질문을 N개 모델에 병렬로 던지고(도구 미사용), 판정 모델이 사실 오류·논리
+        허점을 걸러 하나의 답으로 합칩니다. "어떻게 접근할까", "이 설계가 맞나" 같은
+        판단에 씁니다.</p>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga ensemble</span> "질문" -m &lt;ID|슬롯&gt; -m &lt;ID|슬롯&gt; [-j 판정모델] [-C DIR]</div>
+        <div class="cmd__body">
+          <p><code>-m</code> 을 생략하면 <code>orchestra.yaml</code> 의 <code>models</code> 슬롯
+            전체를 씁니다(2개 이상 필요). <code>-j</code> 생략 시 첫 모델이 판정을 겸합니다.</p>
+        </div>
+      </div>
+
+      <h3>giga divide — 목표를 쪼개 순차 실행</h3>
+      <p>플래너 모델이 목표를 3~6개 하위 작업으로 나누고, 각 하위 작업을 독립된
+        <code>giga agent</code> 실행으로 순차 처리합니다(자체 컨텍스트·runlog). 같은 저장소를
+        건드리므로 병렬이 아니라 순차입니다.</p>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga divide</span> "목표" [-w] [--planner M] [--mode auto-edit] [--dry-run] [-y]</div>
+        <div class="cmd__body">
+          <table>
+            <tbody>
+              <tr><td><code>--dry-run</code></td><td>분할만 보여주고 실행하지 않음</td></tr>
+              <tr><td><code>-w</code></td><td>하위 작업이 파일을 수정하도록 허용</td></tr>
+              <tr><td><code>-y</code></td><td>분할 확인 없이 바로 실행 (비대화 환경은 필수)</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
