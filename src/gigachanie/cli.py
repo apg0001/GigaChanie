@@ -15,6 +15,7 @@ from gigachanie.commands import divide as divide_cmd
 from gigachanie.commands import doctor as doctor_cmd
 from gigachanie.commands import ensemble as ensemble_cmd
 from gigachanie.commands import eval as eval_cmd
+from gigachanie.commands import ext as ext_cmd
 from gigachanie.commands import git as git_cmd
 from gigachanie.commands import init as init_cmd
 from gigachanie.commands import map as map_cmd
@@ -33,6 +34,7 @@ from gigachanie.commands import selfup as selfup_cmd
 from gigachanie.commands import serve as serve_cmd
 from gigachanie.commands import sessions as sessions_cmd
 from gigachanie.commands import setup as setup_cmd
+from gigachanie.commands import spec as spec_cmd
 from gigachanie.commands import undo as undo_cmd
 from gigachanie.ui import make_console
 
@@ -62,6 +64,7 @@ app.command("policy")(policy_cmd.policy)
 app.command("route")(route_cmd.route)
 app.command("ensemble")(ensemble_cmd.ensemble)
 app.command("divide")(divide_cmd.divide)
+app.command("spec")(spec_cmd.spec)
 app.command("runlog")(runlog_cmd.runlog)
 app.command("serve")(serve_cmd.serve)
 app.command("review")(review_cmd.review)
@@ -73,6 +76,7 @@ app.add_typer(mcp_cmd.app, name="mcp")
 app.add_typer(model_cmd.app, name="model")
 app.add_typer(sessions_cmd.app, name="sessions")
 app.add_typer(selfup_cmd.app, name="self")
+app.add_typer(ext_cmd.app, name="ext")
 
 
 def _version_callback(value: bool) -> None:

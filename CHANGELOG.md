@@ -26,6 +26,8 @@
 - `run_subagent` 도구 — 하위 작업을 독립 컨텍스트(부모 대화 미상속)의 에이전트에 위임. 조사·요약처럼 중간 산출물이 많은 작업을 떼어내 부모 컨텍스트를 아낌. 깊이 제한 2, 부모가 쓰기 모드일 때만 편집 허용 (#39)
 - `giga ensemble "질문" -m A -m B [-j 판정]` — N개 모델을 같은 질문에 병렬로 돌리고(도구 미사용) 판정 모델이 하나로 종합. `-m` 은 모델 ID 또는 `orchestra.yaml` 슬롯 (#40)
 - `giga divide "목표" [-w]` — 플래너 모델이 목표를 3~6개 하위 작업으로 나누고, 각 하위 작업을 독립된 `giga agent` 실행으로 순차 처리. `--dry-run` 으로 분할만 미리보기 (#41)
+- `giga spec "요구사항" [-d 초안] [-r 검증] [-o 파일]` — 소형 모델이 구현 계획 초안을 쓰고 대형 모델이 오류·엣지케이스를 지적한 뒤 최종본을 다시 씀 (#42)
+- `giga ext install/list/remove` — 확장 패키지. `giga-ext.yaml` + `commands/*.md` + `prompts/*.md` 디렉터리를 `.agent/` 로 복사·기록. MCP·훅은 위험하므로 자동 병합 안 함 (#43)
 - `giga map` — 저장소 심볼 맵 (심볼 추출 + 참조 랭킹). `agent`/`chat` 은 컨텍스트에 자동 주입, `--no-map` 으로 끔 (#11)
 - `giga memory add/list/show/search/rm` — 장기 메모리. `agent`/`chat` 은 목차를 컨텍스트에 주입하고 `read_memory`/`save_memory` 도구·`/remember`·`/memory` 로 접근 (#12)
 - 세션 대화 자동 압축 — 토큰 추정치가 임계값(컨텍스트의 70%) 초과 시 오래된 메시지를 요약으로 치환. `--compact-at`, `/compact` (#12b)
