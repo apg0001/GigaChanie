@@ -157,3 +157,22 @@ def test_lenient_이스케이프안된_개행_복구() -> None:
     calls, _ = parse_prompt_toolcalls(content, known)
     assert len(calls) == 1
     assert calls[0].arguments == {"content": "l1\nl2\nl3", "path": "a.txt"}
+
+
+def test_salvage_이스케이프안된_따옴표() -> None:
+    # 모델이 replace 안에 """ 를 이스케이프 없이 넣어 JSON 이 깨진 경우
+    known = {"apply_edit", "write_file"}
+    content = (
+        '{"name": "apply_edit", "arguments": {"path": "a.py", "search": "", '
+        '"replace": "def f():\n    \"\"\"doc\"\"\"\n    return 1"}}'
+    )
+    calls, _ = parse_prompt_toolcalls(content, known)
+    assert len(calls) == 1 and calls[0].name == "apply_edit"
+    assert calls[0].arguments.get("path") == "a.py"
+    assert '"""doc"""' in calls[0].arguments.get("replace", "")
+
+
+def test_salvage_는_known_아니면_안함() -> None:
+    content = '{"name": "hallucinated", "arguments": {"path": "x", "content": "\"broken}}'
+    calls, cleaned = parse_prompt_toolcalls(content, {"write_file"})
+    assert calls == []

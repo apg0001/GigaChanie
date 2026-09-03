@@ -241,6 +241,39 @@ def _calls_from_objs(objs: list[Any], known: set[str] | None) -> list[ToolCall]:
     return out
 
 
+# 이스케이프 안 된 따옴표(코드 안의 """ 등)로 JSON 이 깨졌을 때, 키 기준으로 값을 건진다.
+_NAME_KEY_RE = re.compile(r'"(?:name|tool|function)"\s*:\s*"([A-Za-z_][\w]*)"')
+_STR_ARG_KEYS = ("path", "content", "replace", "search", "command", "cmd", "query", "url")
+
+
+def _salvage_toolcall(snippet: str, known: set[str]) -> ToolCall | None:
+    """깨진 JSON 스니펫에서 name + 문자열 인자를 정규식으로 건진다."""
+    nm = _NAME_KEY_RE.search(snippet)
+    if not nm or nm.group(1) not in known:
+        return None
+    name = nm.group(1)
+    args: dict[str, Any] = {}
+    for key in _STR_ARG_KEYS:
+        # "key": " ... " — 값은 다음 `", "다른키":` 또는 `"}` 까지. 게으르게.
+        m = re.search(
+            rf'"{key}"\s*:\s*"(.*?)"\s*(?:,\s*"[a-z_]+"\s*:|\}}\s*\}}?\s*$|\}})',
+            snippet,
+            re.DOTALL,
+        )
+        if m:
+            raw = m.group(1)
+            # 흔한 이스케이프만 풀어준다 (모델이 \\n 을 쓰기도, 진짜 개행을 쓰기도)
+            args[key] = (
+                raw.replace("\\n", "\n").replace("\\t", "\t").replace('\\"', '"')
+            )
+    # 정수 인자(timeout 등)
+    for m in re.finditer(r'"([a-z_]+)"\s*:\s*(-?\d+)', snippet):
+        args.setdefault(m.group(1), int(m.group(2)))
+    if not args:
+        return None
+    return ToolCall(id=_new_id(), name=name, arguments=args)
+
+
 def parse_prompt_toolcalls(
     content: str, known: set[str] | None = None
 ) -> tuple[list[ToolCall], str]:
@@ -274,6 +307,17 @@ def parse_prompt_toolcalls(
             if found:
                 calls.extend(found)
                 spans.append((s, e))
+
+    # 3) 아무 JSON 도 못 건졌는데 본문에 도구 호출 시도로 보이면(깨진 JSON)
+    #    키 기준 정규식으로 건진다.
+    if known and not calls and _NAME_KEY_RE.search(content):
+        # `{` 부터 본문 끝까지를 스니펫으로.
+        m3 = re.search(r"\{[^\n]*\"(?:name|tool|function)\"", content)
+        if m3 is not None:
+            salvaged = _salvage_toolcall(content[m3.start() :], known)
+            if salvaged is not None:
+                calls.append(salvaged)
+                spans.append((m3.start(), len(content)))
 
     if not spans:
         return [], content
