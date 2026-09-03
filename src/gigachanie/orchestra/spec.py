@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from gigachanie.orchestra.multi import release
 from gigachanie.serving.base import Backend, Message
 
 _DRAFT_SYS = (
@@ -37,7 +38,7 @@ async def collaborate(
         )
         draft = d.message.content.strip() or "(초안 실패)"
     finally:
-        await drafter.close()
+        await release(drafter)
 
     review_prompt = f"요구사항:\n{requirement}\n\n초안:\n{draft}"
     try:
@@ -46,6 +47,6 @@ async def collaborate(
         )
         final = r.message.content.strip() or "(검토 실패)"
     finally:
-        await reviewer.close()
+        await release(reviewer)
 
     return SpecResult(draft=draft, final=final)

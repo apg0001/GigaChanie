@@ -66,6 +66,9 @@
 - `@경로` 참조가 존재하지 않는 파일이면 경고, 디렉터리면 파일 지정 안내. 확장자·경로 없는 평범한 단어는 무시 (#46, C10)
 - 네트워크 정책 — `permissions.yaml` 의 `allow_domains` / `deny_domains` (하위 도메인 매칭, deny 우선, allow 목록 있으면 화이트리스트). `web_fetch` 가 호스트 검사 (#47, F5)
 - 컨텍스트 예산 — 모델 컨텍스트 창의 22%를 프로젝트 컨텍스트·repo map·메모리 목차에 4:4:2 로 배분(최소치 보장), 초과분은 잘라냄 (#47, C8)
+- 모델 슬롯 언로드 — `giga ensemble`/`divide`/`spec` 이 각 모델 사용 후 Ollama 에서 언로드(keep_alive:0)해 다음 모델을 위한 VRAM 확보 (#48, E6)
+- `giga chat` 하단 상태줄 — 모델·모드·쓰기·웹·턴·누적 토큰 상시 표시 (`GIGA_PLAIN` 이면 생략) (#48, H7)
+- OpenTelemetry — `GIGA_OTEL=1` + `pip install gigachanie[otel]` 시 agent run 당 span 을 OTLP 로 내보냄. 없으면 no-op (#48, I4)
 
 ### 변경
 - `agent`/`chat` 의 `--mode` 기본값이 `suggest` 고정 → permissions.yaml 의 `mode` 값 (없으면 suggest)

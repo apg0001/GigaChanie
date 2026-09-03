@@ -165,6 +165,19 @@ def test_ollama_일반응답_및_옵션() -> None:
     assert resp.finish_reason == "stop"
 
 
+def test_ollama_unload() -> None:
+    seen = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen["body"] = json.loads(req.content)
+        return httpx.Response(200, json={"done": True})
+
+    be = OllamaBackend("m", client=_client(handler))
+    run_sync(be.unload())
+    assert seen["body"]["keep_alive"] == 0
+    assert seen["body"]["model"] == "m"
+
+
 def test_reasoning_파라미터_전달() -> None:
     seen: dict = {}
 
