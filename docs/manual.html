@@ -354,7 +354,7 @@
       <li><a href="#memory">giga memory</a></li>
       <li><a href="#mcp">giga mcp</a></li>
       <li><a href="#eval">giga eval</a></li>
-      <li><a href="#route">giga route · ensemble · divide</a></li>
+      <li><a href="#route">giga route · ensemble · divide · spec</a></li>
       <li><a href="#review">giga review</a></li>
       <li><a href="#render">giga render</a></li>
       <li><a href="#git">giga commit · pr</a></li>
@@ -817,6 +817,14 @@ router:
         </div>
       </div>
 
+      <h3>giga spec — 초안(소형) → 검증(대형)</h3>
+      <p>소형 모델이 구현 계획 초안(목표·접근·변경할 파일·단계·미해결 질문)을 쓰고,
+        대형 모델이 오류·빠진 엣지 케이스를 지적한 뒤 최종본을 다시 씁니다. 코드는
+        건드리지 않습니다.</p>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga spec</span> "요구사항" [-d 초안모델] [-r 검증모델] [-o out.md] [--show-draft]</div>
+      </div>
+
       <h3>giga divide — 목표를 쪼개 순차 실행</h3>
       <p>플래너 모델이 목표를 3~6개 하위 작업으로 나누고, 각 하위 작업을 독립된
         <code>giga agent</code> 실행으로 순차 처리합니다(자체 컨텍스트·runlog). 같은 저장소를
@@ -871,6 +879,20 @@ description: 실패 테스트 고치기
 ---
 실패하는 테스트를 찾아서 통과시켜라. 대상: $ARGUMENTS</code></pre>
       <p><code>chat</code>에서 <code>/commands</code>로 목록을 봅니다.</p>
+
+      <h3>확장 패키지</h3>
+      <p>커스텀 명령·프롬프트를 묶어 배포합니다. 패키지는 <code>giga-ext.yaml</code>
+        (<code>name</code>, <code>description</code>)과 <code>commands/*.md</code> ·
+        <code>prompts/*.md</code> 를 담은 디렉터리입니다.</p>
+      <div class="cmd">
+        <div class="cmd__line"><span class="sig">giga ext</span> install &lt;경로&gt; [-C DIR] [-f] &nbsp;·&nbsp;
+          <span class="sig">giga ext</span> list &nbsp;·&nbsp; <span class="sig">giga ext</span> remove &lt;이름&gt;</div>
+        <div class="cmd__body">
+          <p><code>install</code> 은 파일을 <code>.agent/commands/</code> ·
+            <code>.agent/prompts/</code> 로 복사하고 <code>.agent/extensions.json</code> 에
+            기록합니다. MCP 서버·훅 설정은 위험하므로 자동 병합하지 않습니다.</p>
+        </div>
+      </div>
 
       <h3>재사용 지시문 (프롬프트)</h3>
       <p><code>&lt;root&gt;/.agent/prompts/&lt;이름&gt;.md</code>(전역은
