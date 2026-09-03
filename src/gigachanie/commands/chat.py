@@ -32,6 +32,7 @@ from gigachanie.loop.hooks import HookRunner
 from gigachanie.loop.procman import ProcessManager
 from gigachanie.loop.prompt import think_directive
 from gigachanie.loop.runlog import RunLogger, git_changed_files
+from gigachanie.loop.subagent import register_subagent_tool
 from gigachanie.loop.tools import ToolContext
 from gigachanie.permissions import load_permissions
 from gigachanie.serving.base import Backend, BackendError, run_sync
@@ -151,6 +152,13 @@ class ChatSession:
             procman=self.procman if self.writable else None,
             ask_user=ask_user,
             hooks=self.hooks if self.hooks.enabled else None,
+        )
+        register_subagent_tool(
+            tools,
+            backend=self.backend,
+            root=self.root,
+            parent_ctx=ctx,
+            parent_writable=self.writable,
         )
         return Agent(
             self.backend,
