@@ -241,10 +241,12 @@ def register_readonly_tools(reg: ToolRegistry) -> None:
 
 def default_readonly_registry() -> ToolRegistry:
     from gigachanie.loop.memory_tools import register_read_memory
+    from gigachanie.loop.task_tools import register_task_tools
 
     reg = ToolRegistry()
     register_readonly_tools(reg)
     register_read_memory(reg)
+    register_task_tools(reg)
     return reg
 
 

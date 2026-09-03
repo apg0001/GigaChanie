@@ -17,6 +17,7 @@
 
 ### 추가
 - `giga plan "작업"` — 계획 모드. 읽기 도구만으로 코드베이스를 조사해 번호 매긴 실행 계획 + "확인 필요"·"위험"을 출력하고 파일은 건드리지 않음. `-x` 를 주면 계획 확인 후 곧바로 `giga agent -w --mode auto-edit` 로 실행 (#32)
+- `update_tasks` 도구 — 에이전트가 3단계 이상 작업을 체크리스트로 분해하고 단계마다 진행 상태(pending/active/done)를 갱신. CLI 와 VS Code 확장이 ✔/▶/○ 로 렌더. 목록은 세션 범위(파일 미기록) (#33)
 - `giga map` — 저장소 심볼 맵 (심볼 추출 + 참조 랭킹). `agent`/`chat` 은 컨텍스트에 자동 주입, `--no-map` 으로 끔 (#11)
 - `giga memory add/list/show/search/rm` — 장기 메모리. `agent`/`chat` 은 목차를 컨텍스트에 주입하고 `read_memory`/`save_memory` 도구·`/remember`·`/memory` 로 접근 (#12)
 - 세션 대화 자동 압축 — 토큰 추정치가 임계값(컨텍스트의 70%) 초과 시 오래된 메시지를 요약으로 치환. `--compact-at`, `/compact` (#12b)

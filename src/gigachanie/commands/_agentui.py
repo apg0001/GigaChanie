@@ -95,6 +95,20 @@ def ask_user(question: str, options: list[str], allow_custom: bool) -> str:
     return raw
 
 
+def _print_tasks(text: str) -> None:
+    console.print("[bold]할 일[/bold]")
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith("[x]"):
+            console.print(f"  [green]✔[/green] [dim]{s[3:].strip()}[/dim]")
+        elif s.startswith("[~]"):
+            console.print(f"  [yellow]▶[/yellow] {s[3:].strip()}")
+        elif s.startswith("[ ]"):
+            console.print(f"  [dim]○[/dim] {s[3:].strip()}")
+        elif s.startswith("—"):
+            console.print(f"  [dim]{s}[/dim]")
+
+
 def make_event_printer() -> Callable[[AgentEvent], None]:
     state = {"streaming": False}
 
@@ -111,9 +125,14 @@ def make_event_printer() -> Callable[[AgentEvent], None]:
                 console.print()
                 state["streaming"] = False
         elif ev.kind == "tool_call":
+            if ev.tool_name == "update_tasks":
+                return
             args = ", ".join(f"{k}={v!r}" for k, v in ev.tool_args.items())
             console.print(f"[cyan]→ {ev.tool_name}[/cyan]({args})")
         elif ev.kind == "tool_result":
+            if ev.tool_name == "update_tasks" and not ev.is_error:
+                _print_tasks(ev.text)
+                return
             style = "red" if ev.is_error else "green"
             preview = ev.text if len(ev.text) <= 800 else ev.text[:800] + " …"
             console.print(f"[{style}]{preview}[/{style}]", markup=False, soft_wrap=True)
