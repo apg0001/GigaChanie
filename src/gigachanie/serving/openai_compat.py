@@ -24,6 +24,7 @@ from gigachanie.serving.base import (
     Usage,
 )
 from gigachanie.serving.toolcall import (
+    StreamGate,
     normalize_native,
     parse_prompt_toolcalls,
     render_prompt_tool_docs,
@@ -172,6 +173,7 @@ class OpenAICompatBackend:
         tool_calls_acc: dict[int, dict[str, Any]] = {}
         finish_reason: str | None = None
         model_name = self.model
+        gate = StreamGate(stream_cb or (lambda _s: None), active=bool(tools))
 
         async with self._client.stream(
             "POST", "/chat/completions", json=payload
@@ -194,8 +196,7 @@ class OpenAICompatBackend:
                 delta = choices[0].get("delta", {})
                 if delta.get("content"):
                     content_parts.append(delta["content"])
-                    if stream_cb:
-                        stream_cb(delta["content"])
+                    gate.feed(delta["content"])
                 for tc in delta.get("tool_calls", []) or []:
                     idx = tc.get("index", 0)
                     slot = tool_calls_acc.setdefault(
@@ -218,6 +219,7 @@ class OpenAICompatBackend:
         if not calls and tools:
             known = {t.name for t in tools}
             calls, cleaned = parse_prompt_toolcalls(content, known)
+        gate.flush(cleaned)
         return ChatResponse(
             message=Message.assistant(cleaned, calls),
             finish_reason=_normalize_finish(finish_reason, bool(calls)),

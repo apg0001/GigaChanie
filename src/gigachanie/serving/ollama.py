@@ -25,6 +25,7 @@ from gigachanie.serving.base import (
     Usage,
 )
 from gigachanie.serving.toolcall import (
+    StreamGate,
     normalize_native,
     parse_prompt_toolcalls,
     render_prompt_tool_docs,
@@ -157,6 +158,7 @@ class OllamaBackend:
         parts: list[str] = []
         raw_calls: list[dict[str, Any]] = []
         last: dict[str, Any] = {}
+        gate = StreamGate(stream_cb or (lambda _s: None), active=bool(tools))
         async with self._client.stream("POST", "/api/chat", json=payload) as resp:
             if resp.status_code >= 400:
                 body = (await resp.aread()).decode("utf-8", "replace")
@@ -172,8 +174,7 @@ class OllamaBackend:
                 msg = obj.get("message", {})
                 if msg.get("content"):
                     parts.append(msg["content"])
-                    if stream_cb:
-                        stream_cb(msg["content"])
+                    gate.feed(msg["content"])
                 for tc in msg.get("tool_calls", []) or []:
                     raw_calls.append(tc)
                 if obj.get("done"):
@@ -185,6 +186,7 @@ class OllamaBackend:
         if not calls and tools:
             known = {t.name for t in tools}
             calls, cleaned = parse_prompt_toolcalls(content, known)
+        gate.flush(cleaned)
         return ChatResponse(
             message=Message.assistant(cleaned, calls),
             finish_reason=_finish(last, bool(calls)),

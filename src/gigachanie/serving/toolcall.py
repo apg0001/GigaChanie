@@ -335,6 +335,82 @@ def parse_prompt_toolcalls(
     return calls, cleaned.strip()
 
 
+_STREAM_MARKER_RE = re.compile(r"<tool_call>|\{\s*\"(?:name|tool|function)\"\s*:")
+# 청크 경계에서 마커가 잘릴 수 있어 이만큼은 꼬리에 남겨 둔다.
+_STREAM_HOLDBACK = 16
+
+
+class StreamGate:
+    """스트리밍 중 '본문에 써낸 도구 호출'로 보이는 구간을 화면에서 가린다.
+
+    약한 모델(qwen2.5-coder 등)은 도구 호출을 네이티브 tool_calls 대신 본문
+    JSON(``` 펜스 포함)으로 뱉는다. 그대로 stream_cb 에 흘리면 사용자 화면에
+    원시 JSON 이 지나간다. 이 게이트는 마커 이전 텍스트만 실시간으로 내보내고,
+    이후는 보류했다가 스트림 종료 시 `flush(cleaned)` 로 실제 답변만 채운다.
+
+    message.content 는 백엔드가 파싱 후 다시 계산하므로 여기서는 '라이브 표시'만
+    제어한다. tools 가 없으면 게이트는 그냥 통과시킨다.
+    """
+
+    def __init__(self, cb: Any, *, active: bool) -> None:
+        self._cb = cb
+        self._active = active
+        self._buf = ""
+        self._sent = ""
+        self._gated = False
+
+    def feed(self, chunk: str) -> None:
+        if not chunk:
+            return
+        if not self._active:
+            self._cb(chunk)
+            self._sent += chunk
+            return
+        if self._gated:
+            self._buf += chunk
+            return
+        self._buf += chunk
+        m = _STREAM_MARKER_RE.search(self._buf)
+        if m:
+            self._emit(self._buf[: m.start()])
+            self._buf = self._buf[m.start() :]
+            self._gated = True
+            return
+        if len(self._buf) > _STREAM_HOLDBACK:
+            cut = len(self._buf) - _STREAM_HOLDBACK
+            self._emit(self._buf[:cut])
+            self._buf = self._buf[cut:]
+
+    def flush(self, cleaned: str) -> None:
+        """스트림 종료 후, 실제 최종 본문(cleaned)에서 아직 안 보낸 부분을 채운다."""
+        if not self._active:
+            return
+        if not self._gated:
+            # 마커를 못 만났으면 홀드백해 둔 꼬리만 마저 내보낸다.
+            if self._buf:
+                self._emit(self._buf)
+                self._buf = ""
+            return
+        sent = self._sent
+        if not sent.strip():
+            if cleaned.strip():
+                self._cb(cleaned)
+            return
+        if cleaned.startswith(sent):
+            tail = cleaned[len(sent) :]
+        elif cleaned.startswith(sent.rstrip()):
+            tail = cleaned[len(sent.rstrip()) :]
+        else:
+            tail = ""
+        if tail.strip():
+            self._cb(tail)
+
+    def _emit(self, text: str) -> None:
+        if text:
+            self._cb(text)
+            self._sent += text
+
+
 def render_prompt_tool_docs(tools: list[dict[str, Any]] | list[Any]) -> str:
     """프롬프트형 백엔드용 도구 설명 텍스트를 만든다."""
     from gigachanie.serving.base import ToolSpec

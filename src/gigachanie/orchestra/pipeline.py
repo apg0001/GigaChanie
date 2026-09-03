@@ -30,6 +30,20 @@ _REVIEW_SYSTEM = """\
 """
 
 _NO_ISSUE = "문제 없음"
+_NO_ISSUE_RE = re.compile(r"^\s*(?:문제\s*없음|없음|no\s+issues?|none)\s*[.!]?\s*$", re.I)
+
+
+def _reads_as_no_issue(text: str) -> bool:
+    """검토 모델이 '문제 없음' 을 말하려는지. 약한 모델의 사족·구두점을 허용한다.
+
+    첫 비어있지 않은 줄이 '문제 없음' 류이고, 뒤에 불릿(지적 항목)이 없으면 참.
+    """
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    if not lines:
+        return False
+    if not _NO_ISSUE_RE.match(lines[0]):
+        return False
+    return not any(ln.lstrip().startswith(("-", "•", "*")) for ln in lines[1:])
 
 
 @dataclass
@@ -106,7 +120,7 @@ async def review_diff(
         return ReviewResult(text=f"리뷰 실패: {exc}", has_issues=False, model=backend.model)
 
     text = resp.message.content.strip()
-    has_issues = bool(text) and not re.match(r"^\s*문제\s*없음\s*$", text)
+    has_issues = bool(text) and not _reads_as_no_issue(text)
     return ReviewResult(
         text=text or _NO_ISSUE,
         has_issues=has_issues,
