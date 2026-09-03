@@ -27,6 +27,7 @@ from gigachanie.commands import review as review_cmd
 from gigachanie.commands import route as route_cmd
 from gigachanie.commands import runlog as runlog_cmd
 from gigachanie.commands import selfup as selfup_cmd
+from gigachanie.commands import serve as serve_cmd
 from gigachanie.commands import sessions as sessions_cmd
 from gigachanie.commands import setup as setup_cmd
 from gigachanie.commands import undo as undo_cmd
@@ -54,6 +55,7 @@ app.command("kill")(ps_cmd.kill)
 app.command("policy")(policy_cmd.policy)
 app.command("route")(route_cmd.route)
 app.command("runlog")(runlog_cmd.runlog)
+app.command("serve")(serve_cmd.serve)
 app.command("review")(review_cmd.review)
 app.command("render")(render_cmd.render)
 app.command("commit")(git_cmd.commit)

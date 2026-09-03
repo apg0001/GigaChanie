@@ -1,0 +1,117 @@
+{
+  "name": "gigachanie-vscode",
+  "displayName": "GigaChanie",
+  "description": "오픈 웨이트 LLM 코딩 에이전트 GigaChanie 를 VS Code 에서 사용합니다.",
+  "version": "0.0.1",
+  "publisher": "gigachanie",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "AI",
+    "Chat",
+    "Programming Languages"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "gigachanie",
+          "title": "GigaChanie",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "gigachanie": [
+        {
+          "type": "webview",
+          "id": "gigachanie.chat",
+          "name": "채팅"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "gigachanie.newSession",
+        "title": "GigaChanie: 새 세션",
+        "icon": "$(add)"
+      },
+      {
+        "command": "gigachanie.ask",
+        "title": "GigaChanie: 작업 실행…"
+      },
+      {
+        "command": "gigachanie.cancel",
+        "title": "GigaChanie: 실행 취소",
+        "icon": "$(stop-circle)"
+      },
+      {
+        "command": "gigachanie.restart",
+        "title": "GigaChanie: 브리지 재시작"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "gigachanie.newSession",
+          "when": "view == gigachanie.chat",
+          "group": "navigation"
+        },
+        {
+          "command": "gigachanie.cancel",
+          "when": "view == gigachanie.chat",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "GigaChanie",
+      "properties": {
+        "gigachanie.command": {
+          "type": "string",
+          "default": "giga",
+          "description": "giga 실행 파일 경로. PATH 에 없으면 절대경로를 지정하세요."
+        },
+        "gigachanie.mode": {
+          "type": "string",
+          "enum": [
+            "suggest",
+            "auto-edit",
+            "full-auto"
+          ],
+          "default": "suggest",
+          "description": "승인 모드. suggest=모든 쓰기/실행 확인, auto-edit=파일 쓰기 자동, full-auto=전부 자동."
+        },
+        "gigachanie.write": {
+          "type": "boolean",
+          "default": true,
+          "description": "쓰기/실행 도구(write_file, run_shell)를 활성화합니다."
+        },
+        "gigachanie.web": {
+          "type": "boolean",
+          "default": false,
+          "description": "웹 도구(web_search, web_fetch)를 활성화합니다."
+        },
+        "gigachanie.maxSteps": {
+          "type": "number",
+          "default": 20,
+          "description": "에이전트 루프 최대 반복 스텝."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  }
+}
