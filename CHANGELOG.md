@@ -21,7 +21,7 @@
 - `giga plan "작업"` — 계획 모드. 읽기 도구만으로 코드베이스를 조사해 번호 매긴 실행 계획 + "확인 필요"·"위험"을 출력하고 파일은 건드리지 않음. `-x` 를 주면 계획 확인 후 곧바로 `giga agent -w --mode auto-edit` 로 실행 (#32)
 - `update_tasks` 도구 — 에이전트가 3단계 이상 작업을 체크리스트로 분해하고 단계마다 진행 상태(pending/active/done)를 갱신. CLI 와 VS Code 확장이 ✔/▶/○ 로 렌더. 목록은 세션 범위(파일 미기록) (#33)
 - 커스텀 프롬프트 — `.agent/prompts/<이름>.md`(전역 `~/.config/gigachanie/prompts/` 도) 재사용 지시문을 `giga agent -p <이름>` / `giga chat -p <이름>`(반복 가능)으로 시스템 프롬프트에 얹음. `giga prompts` 로 목록·본문. 커스텀 슬래시 명령(한 번 실행)과 달리 세션 내내 유지 (#36)
-- 사고 모드 — `giga agent` / `giga chat` 의 `--think`(단계적 추론 유도) / `--think-hard`(여러 접근 비교·반례 탐색). 시스템 프롬프트에 숙고 지시를 얹는 방식 (#37)
+- 사고 모드 — `giga agent` / `giga chat` 의 `--think`(단계적 추론 유도) / `--think-hard`(여러 접근 비교·반례 탐색). 시스템 프롬프트 숙고 지시 + 백엔드 네이티브 reasoning 파라미터(Ollama `think`, OpenAI 호환 `reasoning_effort`)를 low/high 로 전달. 미지원 서버는 무시 (#37, #44)
 - 접근성 — 환경변수 `NO_COLOR`(표준) / `GIGA_NO_COLOR` 로 색·스타일 제거, `GIGA_PLAIN` 으로 하이라이트·이모지까지 끄고 대화형 선택을 번호 입력으로. 모든 명령이 공용 콘솔을 쓰도록 통일 (#38)
 - `run_subagent` 도구 — 하위 작업을 독립 컨텍스트(부모 대화 미상속)의 에이전트에 위임. 조사·요약처럼 중간 산출물이 많은 작업을 떼어내 부모 컨텍스트를 아낌. 깊이 제한 2, 부모가 쓰기 모드일 때만 편집 허용 (#39)
 - `giga ensemble "질문" -m A -m B [-j 판정]` — N개 모델을 같은 질문에 병렬로 돌리고(도구 미사용) 판정 모델이 하나로 종합. `-m` 은 모델 ID 또는 `orchestra.yaml` 슬롯 (#40)

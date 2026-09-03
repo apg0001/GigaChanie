@@ -102,6 +102,7 @@ class ChatSession:
             console.print(f"[yellow]![/yellow] 프롬프트를 찾지 못했습니다: {name}")
         directive = think_directive(think, think_hard)
         self.extra_system = "\n\n".join(x for x in (extra, directive) if x) or None
+        self.reasoning = "high" if think_hard else ("low" if think else None)
         self.memory_store = MemoryStore(root)
         self._refresh_memory()
         self.compact_at = int((load_config().context or 32000) * 0.7)
@@ -170,6 +171,7 @@ class ChatSession:
             extra_system=self.extra_system,
             max_steps=self.max_steps,
             temperature=self.temperature,
+            reasoning=self.reasoning,
             compact_at=self.compact_at,
         )
 

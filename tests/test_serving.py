@@ -165,6 +165,43 @@ def test_ollama_일반응답_및_옵션() -> None:
     assert resp.finish_reason == "stop"
 
 
+def test_reasoning_파라미터_전달() -> None:
+    seen: dict = {}
+
+    def ollama_handler(req: httpx.Request) -> httpx.Response:
+        seen["ollama"] = json.loads(req.content)
+        return httpx.Response(
+            200,
+            json={"model": "m", "message": {"role": "assistant", "content": "x"}, "done": True},
+        )
+
+    def openai_handler(req: httpx.Request) -> httpx.Response:
+        seen["openai"] = json.loads(req.content)
+        return httpx.Response(
+            200,
+            json={
+                "model": "m",
+                "choices": [
+                    {"message": {"role": "assistant", "content": "x"}, "finish_reason": "stop"}
+                ],
+            },
+        )
+
+    ob = OllamaBackend("m", client=_client(ollama_handler))
+    run_sync(ob.chat([Message.user("hi")], reasoning="high"))
+    assert seen["ollama"]["think"] == "high"
+
+    run_sync(ob.chat([Message.user("hi")], reasoning="low-ish"))
+    assert seen["ollama"]["think"] is True  # 알 수 없는 값이면 bool
+
+    run_sync(ob.chat([Message.user("hi")]))
+    assert "think" not in seen["ollama"]
+
+    xb = OpenAICompatBackend("m", "http://t", client=_client(openai_handler))
+    run_sync(xb.chat([Message.user("hi")], reasoning="low"))
+    assert seen["openai"]["reasoning_effort"] == "low"
+
+
 def test_ollama_툴콜_객체인자() -> None:
     def handler(req: httpx.Request) -> httpx.Response:
         return httpx.Response(

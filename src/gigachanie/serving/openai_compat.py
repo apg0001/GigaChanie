@@ -101,6 +101,7 @@ class OpenAICompatBackend:
         temperature: float,
         max_tokens: int | None,
         stream: bool,
+        reasoning: str | None = None,
     ) -> dict[str, Any]:
         wire_messages = [_message_to_wire(m) for m in messages]
 
@@ -119,6 +120,8 @@ class OpenAICompatBackend:
         }
         if max_tokens is not None:
             payload["max_tokens"] = max_tokens
+        if reasoning:
+            payload["reasoning_effort"] = reasoning  # o-series / 호환 서버
         if tools and self.tool_mode == "native":
             payload["tools"] = [t.to_openai() for t in tools]
             payload["tool_choice"] = "auto"
@@ -134,9 +137,12 @@ class OpenAICompatBackend:
         temperature: float = 0.0,
         max_tokens: int | None = None,
         stream_cb: StreamCallback | None = None,
+        reasoning: str | None = None,
     ) -> ChatResponse:
         stream = stream_cb is not None
-        payload = self._build_payload(messages, tools, temperature, max_tokens, stream)
+        payload = self._build_payload(
+            messages, tools, temperature, max_tokens, stream, reasoning
+        )
 
         try:
             if stream:
