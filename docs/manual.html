@@ -1203,6 +1203,9 @@ deny_shell:
       <pre><code>python -m pytest        <span class="c"># 테스트 (실서버 없이 Mock으로 동작)</span>
 ruff check .            <span class="c"># 린트 (line-length 100)</span>
 mypy                    <span class="c"># 타입체크 (strict)</span></code></pre>
+      <p><code>.github/workflows/ci.yml</code> 이 push·PR 마다 위 셋을 파이썬 3.11~3.13 에서
+        돌리고 확장도 컴파일합니다. <code>giga</code> 자체를 CI 리뷰/수정 잡으로 쓰는 예제는
+        <code>docs/CI레시피.md</code>.</p>
       <p>디렉터리 개요:</p>
       <table>
         <tbody>
