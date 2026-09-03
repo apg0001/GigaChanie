@@ -23,3 +23,17 @@ def resolve_backend(spec: str, root: Path) -> tuple[str, Backend]:
 def default_specs(root: Path) -> list[str]:
     """--model 을 안 줬을 때 쓸 기본 목록: orchestra.yaml 슬롯 전체."""
     return list(load_orchestra_config(root).models.keys())
+
+
+async def release(backend: Backend) -> None:
+    """모델을 메모리에서 내리고(가능하면) 클라이언트를 닫는다.
+
+    앙상블·작업 분할·스펙 협업처럼 여러 모델을 순차로 쓸 때 호출한다.
+    """
+    import contextlib
+
+    unload = getattr(backend, "unload", None)
+    if callable(unload):
+        with contextlib.suppress(Exception):
+            await unload()
+    await backend.close()

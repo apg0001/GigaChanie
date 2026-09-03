@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 from collections.abc import Sequence
@@ -226,6 +227,17 @@ class OllamaBackend:
                 f"설치된 모델: {names[:8]}",
             )
         return True, f"연결됨 ({self.host}), '{self.model}' 확인"
+
+    async def unload(self) -> None:
+        """이 모델을 Ollama 메모리에서 즉시 내린다 (keep_alive: 0).
+
+        앙상블·작업 분할처럼 여러 모델을 순차로 쓸 때 VRAM 을 비우는 용도.
+        """
+        with contextlib.suppress(httpx.HTTPError):
+            await self._client.post(
+                "/api/chat",
+                json={"model": self.model, "messages": [], "keep_alive": 0},
+            )
 
     async def close(self) -> None:
         if self._owns_client:

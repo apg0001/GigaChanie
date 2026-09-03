@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 
+from gigachanie.orchestra.multi import release
 from gigachanie.serving.base import Backend, BackendError, Message
 
 _SYS = "당신은 신중한 시니어 엔지니어입니다. 근거와 함께 간결하게 답하세요."
@@ -29,7 +30,7 @@ async def _one(label: str, backend: Backend, prompt: str) -> tuple[str, str]:
     except BackendError as exc:
         return label, f"(오류: {exc})"
     finally:
-        await backend.close()
+        await release(backend)
 
 
 async def run_ensemble(
@@ -58,5 +59,5 @@ async def run_ensemble(
     except BackendError as exc:
         verdict = f"(판정 모델 오류: {exc})"
     finally:
-        await jbackend.close()
+        await release(jbackend)
     return EnsembleResult(answers=list(answers), verdict=verdict)

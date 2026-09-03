@@ -77,3 +77,19 @@ class RunLogger:
                 fh.write(json.dumps(row, ensure_ascii=False) + "\n")
         except OSError:
             pass
+
+        from gigachanie.loop.otel import emit_run_span
+
+        emit_run_span(
+            name="giga.agent.run",
+            started=self._started,
+            attributes={
+                "model": self._model,
+                "ok": bool(result.ok),
+                "stop_reason": result.stop_reason,
+                "steps": result.steps,
+                "tokens.total": result.usage.total_tokens,
+                "edit_failures": self._edit_failures,
+                "changed_files": len(changed_files or []),
+            },
+        )

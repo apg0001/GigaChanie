@@ -40,7 +40,7 @@ from gigachanie.permissions import load_permissions
 from gigachanie.serving.base import Backend, BackendError, run_sync
 from gigachanie.serving.factory import build_backend
 from gigachanie.session import SessionData, SessionStore
-from gigachanie.ui import make_console
+from gigachanie.ui import make_console, no_color, plain
 
 console = make_console()
 
@@ -494,7 +494,22 @@ def chat(
     )
 
     hist_path = user_config_path("gigachanie", appauthor=False, ensure_exists=True) / "chat_history"
-    pt: PromptSession[str] = PromptSession(history=FileHistory(str(hist_path)))
+
+    def _toolbar() -> str:
+        tot = session.usage_prompt + session.usage_completion
+        return (
+            f" {session.backend.model} · {session.mode.value}"
+            f" · 쓰기 {'on' if session.writable else 'off'}"
+            f" · 웹 {'on' if session.web else 'off'}"
+            f" · 턴 {sum(1 for m in session.agent.messages if m.role == 'user')}"
+            f" · 토큰 {tot}"
+        )
+
+    show_toolbar = not (no_color() or plain())
+    pt: PromptSession[str] = PromptSession(
+        history=FileHistory(str(hist_path)),
+        bottom_toolbar=_toolbar if show_toolbar else None,
+    )
 
     console.print("[bold]GigaChanie chat[/bold] · /help 로 명령 확인, /exit 로 종료")
     if session.custom_commands:
