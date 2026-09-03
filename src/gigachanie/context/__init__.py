@@ -2,6 +2,7 @@
 
 from gigachanie.context.memory import MemoryEntry, MemoryStore
 from gigachanie.context.project_file import ProjectContext, load_project_context
+from gigachanie.context.prompts import Prompt, list_prompts, load_prompts
 from gigachanie.context.refs import ExpandedRefs, expand_file_refs, expand_refs
 from gigachanie.context.repo_map import RepoMap, build_repo_map
 
@@ -15,4 +16,7 @@ __all__ = [
     "build_repo_map",
     "MemoryStore",
     "MemoryEntry",
+    "Prompt",
+    "list_prompts",
+    "load_prompts",
 ]
