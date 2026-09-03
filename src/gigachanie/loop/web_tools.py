@@ -210,6 +210,10 @@ async def _web_fetch(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     if parsed.scheme not in ("http", "https"):
         raise ToolError("http/https URL 만 지원합니다.")
 
+    dom_ok, dom_reason = ctx.policy.domain_ok(parsed.hostname or "")
+    if not dom_ok:
+        return ToolResult.error(f"웹 fetch 거부됨 ({dom_reason})")
+
     allowed, reason = ctx.policy.check(
         ApprovalRequest(kind="network", summary=f"웹 fetch: {url}", detail=url)
     )

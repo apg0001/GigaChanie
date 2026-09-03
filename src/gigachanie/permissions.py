@@ -59,6 +59,8 @@ class PermissionSettings:
     deny_shell: list[str] = field(default_factory=list)
     allow_paths: list[str] = field(default_factory=list)
     deny_paths: list[str] = field(default_factory=list)
+    allow_domains: list[str] = field(default_factory=list)
+    deny_domains: list[str] = field(default_factory=list)
 
     def effective_deny_paths(self) -> list[str]:
         return [*DEFAULT_DENY_PATHS, *self.deny_paths]
@@ -98,4 +100,6 @@ def load_permissions(root: Path) -> PermissionSettings:
         merged.deny_shell += _list(data.get("deny_shell"))
         merged.allow_paths += _list(data.get("allow_paths"))
         merged.deny_paths += _list(data.get("deny_paths"))
+        merged.allow_domains += _list(data.get("allow_domains"))
+        merged.deny_domains += _list(data.get("deny_domains"))
     return merged
