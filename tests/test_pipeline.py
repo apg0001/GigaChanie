@@ -34,6 +34,22 @@ def test_review_diff_문제없음() -> None:
     assert not res.has_issues
 
 
+def test_review_diff_문제없음_사족_허용() -> None:
+    # 약한 모델이 구두점·사족을 붙여도 '문제 없음' 으로 읽어야 한다
+    for txt in ("문제 없음.", "문제없음", "No issues.", "문제 없음\n검토를 마쳤습니다"):
+        backend = ScriptedBackend([text_response(txt)])
+        res = run_sync(review_diff(backend, _DIFF))
+        assert not res.has_issues, txt
+
+
+def test_review_diff_문제없음이라해도_불릿있으면_문제() -> None:
+    backend = ScriptedBackend(
+        [text_response("문제 없음\n- calc.py:2 뺄셈 버그")]
+    )
+    res = run_sync(review_diff(backend, _DIFF))
+    assert res.has_issues
+
+
 def test_review_diff_빈변경() -> None:
     backend = ScriptedBackend([text_response("...")])
     res = run_sync(review_diff(backend, "   "))

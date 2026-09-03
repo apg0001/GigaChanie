@@ -1,10 +1,56 @@
 """도구 호출 파싱 테스트."""
 
 from gigachanie.serving.toolcall import (
+    StreamGate,
     extract_first_json,
     normalize_native,
     parse_prompt_toolcalls,
 )
+
+
+def _run_gate(chunks: list[str], cleaned: str, *, active: bool = True) -> str:
+    out: list[str] = []
+    gate = StreamGate(out.append, active=active)
+    for c in chunks:
+        gate.feed(c)
+    gate.flush(cleaned)
+    return "".join(out)
+
+
+def test_streamgate_평범한_텍스트는_그대로_통과() -> None:
+    txt = "이 파일은 계산기입니다. add 함수가 두 수를 더합니다."
+    got = _run_gate([txt[:20], txt[20:]], txt)
+    assert got == txt
+
+
+def test_streamgate_본문_JSON_툴콜은_가린다() -> None:
+    # qwen 이 write_file 툴콜을 본문 JSON 으로 뱉는 경우
+    stream = '만들겠습니다.\n{"name": "write_file", "arguments": {"path": "a.py", "content": "x"}}'
+    # 파싱 후 cleaned (툴콜 제거)
+    cleaned = "만들겠습니다."
+    got = _run_gate([stream[:10], stream[10:30], stream[30:]], cleaned)
+    assert "write_file" not in got
+    assert "만들겠습니다." in got
+
+
+def test_streamgate_펜스안_툴콜도_가린다() -> None:
+    stream = '```sh\n{"name": "run_shell", "arguments": {"command": "ls"}}\n```'
+    got = _run_gate([stream], "")
+    assert "run_shell" not in got
+    assert "ls" not in got
+
+
+def test_streamgate_오탐이면_flush로_복구() -> None:
+    # 최종 답변에 우연히 {"name": ...} 가 들어간 경우 → 툴콜 아님 → 다 보여야 함
+    txt = '설정 예시: {"name": "foo"} 를 넣으세요.'
+    got = _run_gate([txt[:5], txt[5:]], txt)
+    assert got == txt
+
+
+def test_streamgate_비활성이면_전부_통과() -> None:
+    stream = '{"name": "write_file", "arguments": {}}'
+    got = _run_gate([stream], stream, active=False)
+    assert got == stream
 
 
 def test_normalize_native_openai_스타일() -> None:
