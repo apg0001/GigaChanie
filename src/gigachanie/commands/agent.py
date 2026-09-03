@@ -19,6 +19,7 @@ from gigachanie.context import (
     build_repo_map,
     expand_refs,
     load_project_context,
+    load_prompts,
 )
 from gigachanie.loop.agent import Agent, AgentEvent
 from gigachanie.loop.approval import ApprovalMode, build_policy
@@ -139,6 +140,9 @@ def agent(
     no_network: bool = typer.Option(
         False, "--no-network", help="샌드박스에서 네트워크를 차단한다."
     ),
+    prompts: list[str] = typer.Option(
+        [], "--prompt", "-p", help="`.agent/prompts/<이름>.md` 재사용 지시문을 얹는다 (반복 가능)."
+    ),
 ) -> None:
     """도구를 사용해 코드베이스를 조사하거나 수정한다."""
     task_text = " ".join(task)
@@ -194,6 +198,9 @@ def agent(
     pc = None if no_context else load_project_context(ctx.root, Path.cwd())
     rm = None if no_map else build_repo_map(ctx.root, cwd=Path.cwd())
     mem_index = "" if no_context else MemoryStore(ctx.root).index_text()
+    extra_system, missing_prompts = load_prompts(ctx.root, prompts)
+    for name in missing_prompts:
+        console.print(f"[yellow]![/yellow] 프롬프트를 찾지 못했습니다: {name}")
     exp = expand_refs(task_text, ctx.root)
     task_text = exp.text
     task_images = exp.images
@@ -239,6 +246,7 @@ def agent(
         project_context=pc.text if pc else None,
         repo_map=rm.text if rm else None,
         memory_index=mem_index or None,
+        extra_system=extra_system or None,
         max_steps=max_steps,
         temperature=temperature,
         compact_at=resolved_compact,

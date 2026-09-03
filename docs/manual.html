@@ -842,6 +842,17 @@ description: 실패 테스트 고치기
 실패하는 테스트를 찾아서 통과시켜라. 대상: $ARGUMENTS</code></pre>
       <p><code>chat</code>에서 <code>/commands</code>로 목록을 봅니다.</p>
 
+      <h3>재사용 지시문 (프롬프트)</h3>
+      <p><code>&lt;root&gt;/.agent/prompts/&lt;이름&gt;.md</code>(전역은
+        <code>~/.config/gigachanie/prompts/</code>)에 세션 내내 유지할 지시문을 둡니다 —
+        코딩 스타일, 말투, 금지 사항 등. 슬래시 명령이 "한 번 실행하는 작업"이라면
+        프롬프트는 "계속 적용되는 규칙"입니다.</p>
+      <pre><code><span class="c"># .agent/prompts/style.md</span>
+간결하게. 방어적 코드·불필요한 추상화 금지. 주석은 WHY 만.</code></pre>
+      <p><code>giga agent -p style -p kr "작업"</code> 또는 <code>giga chat -p style</code>
+        처럼 여러 개를 얹을 수 있습니다. <code>giga prompts</code>로 목록,
+        <code>giga prompts --show &lt;이름&gt;</code>으로 본문을 봅니다.</p>
+
       <h3>훅</h3>
       <p><code>&lt;root&gt;/.agent/hooks.yaml</code>에 이벤트별 셸 명령을 등록합니다.
         <code>pre_tool</code> 훅이 <b>종료코드 ≠ 0</b>이면 그 도구 호출이 차단됩니다.

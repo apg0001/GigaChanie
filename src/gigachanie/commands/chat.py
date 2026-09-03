@@ -23,6 +23,7 @@ from gigachanie.context import (
     build_repo_map,
     expand_refs,
     load_project_context,
+    load_prompts,
 )
 from gigachanie.loop.agent import Agent, AgentEvent
 from gigachanie.loop.approval import ApprovalMode, build_policy
@@ -75,6 +76,7 @@ class ChatSession:
         use_context: bool = True,
         use_map: bool = True,
         web: bool = False,
+        prompts: list[str] | None = None,
         resume: SessionData | None = None,
     ) -> None:
         self.backend = backend
@@ -91,6 +93,10 @@ class ChatSession:
         rm = build_repo_map(root, cwd=root) if use_map else None
         self.repo_map = rm.text if rm and rm.found else None
         self.map_files = len(rm.entries) if rm else 0
+        extra, missing = load_prompts(root, prompts or [])
+        self.extra_system = extra or None
+        for name in missing:
+            console.print(f"[yellow]![/yellow] 프롬프트를 찾지 못했습니다: {name}")
         self.memory_store = MemoryStore(root)
         self._refresh_memory()
         self.compact_at = int((load_config().context or 32000) * 0.7)
@@ -149,6 +155,7 @@ class ChatSession:
             project_context=self.project_context,
             repo_map=self.repo_map,
             memory_index=self.memory_index,
+            extra_system=self.extra_system,
             max_steps=self.max_steps,
             temperature=self.temperature,
             compact_at=self.compact_at,
@@ -376,6 +383,9 @@ def chat(
     no_map: bool = typer.Option(False, "--no-map", help="저장소 심볼 맵을 넣지 않는다."),
     cont: bool = typer.Option(False, "--continue", "-c", help="가장 최근 세션을 이어간다."),
     resume_id: str = typer.Option("", "--resume", help="특정 세션 ID 를 이어간다."),
+    prompts: list[str] = typer.Option(
+        [], "--prompt", "-p", help="`.agent/prompts/<이름>.md` 재사용 지시문을 얹는다 (반복 가능)."
+    ),
 ) -> None:
     """대화형으로 에이전트와 작업한다."""
     root_path = root.resolve()
@@ -419,6 +429,7 @@ def chat(
         temperature=temperature,
         use_context=not no_context,
         use_map=not no_map,
+        prompts=prompts,
         resume=resume_data,
     )
 

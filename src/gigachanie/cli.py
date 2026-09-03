@@ -22,6 +22,7 @@ from gigachanie.commands import memory as memory_cmd
 from gigachanie.commands import model as model_cmd
 from gigachanie.commands import plan as plan_cmd
 from gigachanie.commands import policy as policy_cmd
+from gigachanie.commands import prompts as prompts_cmd
 from gigachanie.commands import ps as ps_cmd
 from gigachanie.commands import render as render_cmd
 from gigachanie.commands import review as review_cmd
@@ -47,6 +48,7 @@ app.command("ask")(ask_cmd.ask)
 app.command("ping")(ask_cmd.ping)
 app.command("agent")(agent_cmd.agent)
 app.command("plan")(plan_cmd.plan)
+app.command("prompts")(prompts_cmd.prompts)
 app.command("chat")(chat_cmd.chat)
 app.command("init")(init_cmd.init)
 app.command("map")(map_cmd.repo_map_cmd)

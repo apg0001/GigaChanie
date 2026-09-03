@@ -74,6 +74,7 @@ class Agent:
         project_context: str | None = None,
         repo_map: str | None = None,
         memory_index: str | None = None,
+        extra_system: str | None = None,
         max_steps: int = 20,
         temperature: float = 0.0,
         max_tokens: int | None = None,
@@ -85,6 +86,7 @@ class Agent:
         self.tools = tools
         self.ctx = ctx
         self.system_prompt = system_prompt or build_system_prompt(
+            extra=extra_system,
             project_context=project_context,
             repo_map=repo_map,
             memory_index=memory_index,
