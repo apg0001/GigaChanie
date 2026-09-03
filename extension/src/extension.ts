@@ -23,6 +23,7 @@ type OutMsg =
   | { type: "final"; ok: boolean; stopReason: string; text: string; steps: number; total: number; changed: string[] }
   | { type: "approval"; requestId: string; kind: string; summary: string; detail: string }
   | { type: "status"; text: string; busy: boolean }
+  | { type: "completions"; frag: string; items: string[] }
   | { type: "clear" };
 
 class ChatViewProvider implements vscode.WebviewViewProvider {
@@ -73,21 +74,48 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
     } else if (m?.type === "cancel") {
       void this.cancel();
     } else if (m?.type === "openFile" && typeof m.path === "string") {
-      void this.openFile(m.path);
+      void this.openFile(m.path, m.diff === true);
+    } else if (m?.type === "complete" && typeof m.frag === "string") {
+      void this.completeFiles(m.frag);
     }
   }
 
-  private async openFile(rel: string): Promise<void> {
+  private async openFile(rel: string, diff: boolean): Promise<void> {
     const root = this.workspaceRoot();
     if (!root) {
       return;
     }
     const uri = vscode.Uri.joinPath(vscode.Uri.file(root), rel);
     try {
-      await vscode.window.showTextDocument(uri, { preview: false });
+      if (diff) {
+        await vscode.commands.executeCommand("git.openChange", uri);
+      } else {
+        await vscode.window.showTextDocument(uri, { preview: false });
+      }
     } catch (err: any) {
       this.output.appendLine(`파일 열기 실패 (${rel}): ${err?.message ?? err}`);
     }
+  }
+
+  private async completeFiles(frag: string): Promise<void> {
+    const clean = frag.replace(/[^\w./\-가-힣]/g, "");
+    const pattern = clean ? `**/*${clean}*` : "**/*";
+    let uris: vscode.Uri[] = [];
+    try {
+      uris = await vscode.workspace.findFiles(
+        pattern,
+        "**/{node_modules,.git,out,dist,build,.venv}/**",
+        30,
+      );
+    } catch {
+      /* ignore */
+    }
+    const root = this.workspaceRoot() ?? "";
+    const items = uris
+      .map((u) => vscode.workspace.asRelativePath(u, false))
+      .filter((p) => root === "" || !p.startsWith(".."))
+      .sort();
+    this.post({ type: "completions", frag, items });
   }
 
   // ------------------------------------------------------------------ 연결
@@ -326,6 +354,14 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
   .approval pre { max-height: 180px; overflow: auto; background: var(--vscode-editor-background); padding: 6px; }
   .approval button { margin-right: 6px; }
   #bar { display: flex; gap: 6px; padding: 8px; border-top: 1px solid var(--vscode-panel-border); }
+  #wrap { position: relative; flex: 1; display: flex; }
+  #ac { position: absolute; bottom: 100%; left: 0; right: 0; margin: 0 0 2px; padding: 2px;
+    list-style: none; max-height: 180px; overflow-y: auto; z-index: 5;
+    background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-editorWidget-border);
+    border-radius: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em; }
+  #ac li { padding: 2px 6px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #ac li.sel, #ac li:hover { background: var(--vscode-list-activeSelectionBackground);
+    color: var(--vscode-list-activeSelectionForeground); }
   #input { flex: 1; resize: none; min-height: 44px; max-height: 160px;
     background: var(--vscode-input-background); color: var(--vscode-input-foreground);
     border: 1px solid var(--vscode-input-border); border-radius: 4px; padding: 6px; font-family: inherit; }
@@ -339,7 +375,10 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
   <div id="log"></div>
   <div id="status">대기</div>
   <div id="bar">
-    <textarea id="input" placeholder="작업을 입력하고 Enter (줄바꿈은 Shift+Enter)"></textarea>
+    <div id="wrap">
+      <textarea id="input" placeholder="작업을 입력하고 Enter (줄바꿈은 Shift+Enter). @파일 자동완성"></textarea>
+      <ul id="ac" hidden></ul>
+    </div>
     <button id="send">보내기</button>
   </div>
 <script nonce="${nonce}">
@@ -379,18 +418,70 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
     const text = input.value.trim();
     if (!text) return;
     input.value = '';
+    hideAc();
     vscode.postMessage({ type: 'submit', text });
   }
   document.getElementById('send').addEventListener('click', send);
+
+  const ac = document.getElementById('ac');
+  let acItems = [];
+  let acSel = -1;
+  let acFrag = '';
+
+  function hideAc() { ac.hidden = true; acItems = []; acSel = -1; }
+  function currentFrag() {
+    const upto = input.value.slice(0, input.selectionStart);
+    const mt = upto.match(/@([\\w./\\-가-힣]*)$/);
+    return mt ? mt[1] : null;
+  }
+  function applyAc(item) {
+    const start = input.selectionStart - acFrag.length;
+    input.value = input.value.slice(0, start) + item + ' ' + input.value.slice(input.selectionStart);
+    const pos = start + item.length + 1;
+    input.setSelectionRange(pos, pos);
+    hideAc();
+    input.focus();
+  }
+  function renderAc() {
+    ac.innerHTML = '';
+    acItems.slice(0, 50).forEach((it, i) => {
+      const li = document.createElement('li');
+      li.textContent = it;
+      if (i === acSel) li.className = 'sel';
+      li.addEventListener('mousedown', (e) => { e.preventDefault(); applyAc(it); });
+      ac.appendChild(li);
+    });
+    ac.hidden = acItems.length === 0;
+  }
+
+  input.addEventListener('input', () => {
+    const f = currentFrag();
+    if (f === null) { hideAc(); return; }
+    acFrag = f;
+    vscode.postMessage({ type: 'complete', frag: f });
+  });
   input.addEventListener('keydown', (e) => {
+    if (!ac.hidden && acItems.length) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); acSel = (acSel + 1) % acItems.length; renderAc(); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); acSel = (acSel - 1 + acItems.length) % acItems.length; renderAc(); return; }
+      if (e.key === 'Tab' || (e.key === 'Enter' && acSel >= 0)) {
+        e.preventDefault(); applyAc(acItems[acSel < 0 ? 0 : acSel]); return;
+      }
+      if (e.key === 'Escape') { e.preventDefault(); hideAc(); return; }
+    }
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
+  input.addEventListener('blur', () => setTimeout(hideAc, 120));
 
   window.addEventListener('message', (ev) => {
     const m = ev.data;
     if (m.type === 'clear') { log.innerHTML = ''; current = null; }
     else if (m.type === 'user') { add('user', m.text); current = null; }
     else if (m.type === 'status') { statusEl.textContent = m.text; }
+    else if (m.type === 'completions') {
+      if (m.frag !== acFrag) return;
+      acItems = m.items || []; acSel = acItems.length ? 0 : -1; renderAc();
+    }
     else if (m.type === 'event') {
       if (m.kind === 'assistant_text') { current = add('assistant', m.text || ''); }
       else if (m.kind === 'assistant_delta') {
@@ -420,12 +511,17 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
         files.className = 'meta';
         files.appendChild(document.createTextNode('변경: '));
         m.changed.forEach((p, i) => {
-          if (i) files.appendChild(document.createTextNode(', '));
+          if (i) files.appendChild(document.createTextNode(' · '));
           const a = document.createElement('a');
           a.href = '#'; a.textContent = p;
           a.addEventListener('click', (e) => { e.preventDefault();
             vscode.postMessage({ type: 'openFile', path: p }); });
           files.appendChild(a);
+          const d = document.createElement('a');
+          d.href = '#'; d.textContent = ' (diff)';
+          d.addEventListener('click', (e) => { e.preventDefault();
+            vscode.postMessage({ type: 'openFile', path: p, diff: true }); });
+          files.appendChild(d);
         });
         d.appendChild(files);
       }

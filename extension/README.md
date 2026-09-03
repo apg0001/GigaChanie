@@ -34,7 +34,8 @@ VS Code 에서 이 폴더를 열고 F5 (Extension Development Host) 로 실행�
 - `suggest` 모드에서 쓰기/셸 실행 시 뷰 안에서 **허용/거부** 승인
 - `ask_user` 명확화 질문은 QuickPick(+직접 입력)으로 응답
 - 상태 표시줄에 모델·승인 모드·실행 상태 표시
-- 답변에 나온 변경 파일을 클릭하면 에디터에서 열림
+- 답변에 나온 변경 파일을 클릭하면 에디터에서 열림, `(diff)` 로 HEAD 대비 변경 확인
+- 입력창에서 `@` 뒤에 파일명을 치면 워크스페이스 파일 자동완성 (↑↓/Tab)
 - 명령: `GigaChanie: 새 세션`, `GigaChanie: 작업 실행…`, `GigaChanie: 실행 취소`,
   `GigaChanie: 브리지 재시작`
 - 설정: `gigachanie.command`, `gigachanie.mode`, `gigachanie.write`,
