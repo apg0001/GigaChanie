@@ -6,7 +6,6 @@ import dataclasses
 import json
 
 import typer
-from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
@@ -19,8 +18,9 @@ from gigachanie.providers.recommend import (
     compute_budget,
     recommend_models,
 )
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 
 _FIT_STYLE = {
     Fit.FULL: "bold green",

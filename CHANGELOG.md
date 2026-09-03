@@ -22,6 +22,7 @@
 - `update_tasks` 도구 — 에이전트가 3단계 이상 작업을 체크리스트로 분해하고 단계마다 진행 상태(pending/active/done)를 갱신. CLI 와 VS Code 확장이 ✔/▶/○ 로 렌더. 목록은 세션 범위(파일 미기록) (#33)
 - 커스텀 프롬프트 — `.agent/prompts/<이름>.md`(전역 `~/.config/gigachanie/prompts/` 도) 재사용 지시문을 `giga agent -p <이름>` / `giga chat -p <이름>`(반복 가능)으로 시스템 프롬프트에 얹음. `giga prompts` 로 목록·본문. 커스텀 슬래시 명령(한 번 실행)과 달리 세션 내내 유지 (#36)
 - 사고 모드 — `giga agent` / `giga chat` 의 `--think`(단계적 추론 유도) / `--think-hard`(여러 접근 비교·반례 탐색). 시스템 프롬프트에 숙고 지시를 얹는 방식 (#37)
+- 접근성 — 환경변수 `NO_COLOR`(표준) / `GIGA_NO_COLOR` 로 색·스타일 제거, `GIGA_PLAIN` 으로 하이라이트·이모지까지 끄고 대화형 선택을 번호 입력으로. 모든 명령이 공용 콘솔을 쓰도록 통일 (#38)
 - `giga map` — 저장소 심볼 맵 (심볼 추출 + 참조 랭킹). `agent`/`chat` 은 컨텍스트에 자동 주입, `--no-map` 으로 끔 (#11)
 - `giga memory add/list/show/search/rm` — 장기 메모리. `agent`/`chat` 은 목차를 컨텍스트에 주입하고 `read_memory`/`save_memory` 도구·`/remember`·`/memory` 로 접근 (#12)
 - 세션 대화 자동 압축 — 토큰 추정치가 임계값(컨텍스트의 70%) 초과 시 오래된 메시지를 요약으로 치환. `--compact-at`, `/compact` (#12b)

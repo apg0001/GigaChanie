@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import typer
-from rich.console import Console
 
 from gigachanie.commands._agentui import ask_user, make_approver, make_event_printer
 from gigachanie.commands._pick import is_tty as _is_tty
@@ -34,8 +33,9 @@ from gigachanie.loop.tools import ToolContext
 from gigachanie.permissions import load_permissions
 from gigachanie.serving.base import BackendError, run_sync
 from gigachanie.serving.factory import build_backend
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 
 
 async def _pipeline_review(

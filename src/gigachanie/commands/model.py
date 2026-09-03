@@ -6,15 +6,15 @@ import subprocess
 import sys
 
 import typer
-from rich.console import Console
 from rich.table import Table
 
 from gigachanie.config import Config, load_config, save_user_config, user_config_file
 from gigachanie.providers.hardware import detect_hardware
 from gigachanie.providers.recommend import Fit, recommend_models
 from gigachanie.providers.registry import Registry, default_registry
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 app = typer.Typer(name="model", help="모델 목록 조회 / 선택 / 다운로드.", no_args_is_help=True)
 
 

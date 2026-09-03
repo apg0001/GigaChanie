@@ -5,11 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import typer
-from rich.console import Console
 
 from gigachanie.context import list_prompts
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 
 
 def prompts(

@@ -8,13 +8,13 @@ from pathlib import Path
 
 import typer
 import yaml
-from rich.console import Console
 from rich.syntax import Syntax
 
 from gigachanie.loop.agent import AgentEvent
 from gigachanie.loop.approval import ApprovalRequest, Approver
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 
 
 def _remember_rule(root: Path, req: ApprovalRequest) -> None:

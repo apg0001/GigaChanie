@@ -5,13 +5,13 @@ from __future__ import annotations
 import subprocess
 
 import typer
-from rich.console import Console
 from rich.table import Table
 
 from gigachanie import selfmaint
 from gigachanie.commands._pick import is_tty
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 app = typer.Typer(
     name="self",
     help="자기 점검 / 업데이트 / 자가 수정.",

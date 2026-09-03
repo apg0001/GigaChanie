@@ -6,12 +6,12 @@ import sys
 from pathlib import Path
 
 import typer
-from rich.console import Console
 
 from gigachanie.render import RenderError
 from gigachanie.render import render as do_render
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 
 
 def render(

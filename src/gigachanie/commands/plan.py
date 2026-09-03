@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 
 import typer
-from rich.console import Console
 
 from gigachanie.commands._agentui import make_event_printer
 from gigachanie.commands._pick import is_tty
@@ -23,8 +22,9 @@ from gigachanie.loop.prompt import PLAN_MODE_PROMPT, build_system_prompt
 from gigachanie.loop.tools import ToolContext
 from gigachanie.serving.base import BackendError, run_sync
 from gigachanie.serving.factory import build_backend
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 
 
 def plan(

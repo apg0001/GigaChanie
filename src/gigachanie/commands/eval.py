@@ -7,14 +7,14 @@ from importlib import resources
 from pathlib import Path
 
 import typer
-from rich.console import Console
 from rich.table import Table
 
 from gigachanie.eval.harness import EvalReport, load_tasks, run_task
 from gigachanie.serving.base import BackendError, run_sync
 from gigachanie.serving.factory import build_backend
+from gigachanie.ui import make_console
 
-console = Console()
+console = make_console()
 
 
 def _bundled_tasks_dir() -> Path:
