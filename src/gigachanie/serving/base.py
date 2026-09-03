@@ -80,6 +80,12 @@ class Usage:
     def total_tokens(self) -> int:
         return self.prompt_tokens + self.completion_tokens
 
+    def __add__(self, other: Usage) -> Usage:
+        return Usage(
+            self.prompt_tokens + other.prompt_tokens,
+            self.completion_tokens + other.completion_tokens,
+        )
+
 
 FinishReason = Literal["stop", "tool_calls", "length", "error"]
 

@@ -219,10 +219,7 @@ class Agent:
                 stop = "cancelled"
                 break
 
-            self._usage = Usage(
-                self._usage.prompt_tokens + resp.usage.prompt_tokens,
-                self._usage.completion_tokens + resp.usage.completion_tokens,
-            )
+            self._usage = self._usage + resp.usage
             self.messages.append(resp.message)
 
             if resp.message.content:
@@ -267,11 +264,10 @@ class Agent:
                 stop = "cancelled"
                 break
             if guard_hit:
+                # 반복 도구의 결과 메시지는 _run_tool_calls 가 이미 넣었다.
                 final_text = (
-                    "같은 도구 호출이 반복되어 중단했습니다. "
-                    "다른 접근이 필요합니다."
+                    "같은 도구 호출이 반복되어 중단했습니다. 다른 접근이 필요합니다."
                 )
-                self.messages.append(Message.user(final_text))
                 stop = "max_steps"
                 break
         else:
@@ -295,7 +291,8 @@ class Agent:
 
     async def _maybe_compact(self, emit: EventHandler) -> None:
         before = len(self.messages)
-        self.messages, did = await compact(self.backend, self.messages)
+        self.messages, did, used = await compact(self.backend, self.messages)
+        self._usage = self._usage + used
         if did:
             emit(
                 AgentEvent(
@@ -307,7 +304,10 @@ class Agent:
     async def compact_now(self, on_event: EventHandler | None = None) -> bool:
         emit = on_event or (lambda _e: None)
         before = len(self.messages)
-        self.messages, did = await compact(self.backend, self.messages, keep_recent=4)
+        self.messages, did, used = await compact(
+            self.backend, self.messages, keep_recent=4
+        )
+        self._usage = self._usage + used
         if did:
             emit(
                 AgentEvent(
@@ -323,7 +323,7 @@ class Agent:
         self, calls: list[ToolCall], step: int, emit: EventHandler
     ) -> bool:
         """도구들을 실행해 결과 메시지를 추가한다. 반복 가드에 걸리면 True."""
-        for call in calls:
+        for idx, call in enumerate(calls):
             sig = _args_signature(call)
             self._call_counts[sig] = self._call_counts.get(sig, 0) + 1
             emit(
@@ -336,6 +336,15 @@ class Agent:
             )
 
             if self._call_counts[sig] > self.repeat_limit:
+                # 이 assistant 의 tool_calls 를 전부 답해 둔다(메시지 짝 유지).
+                # 답하지 않으면 chat 재개·세션 복원 시 백엔드가 거부한다.
+                for pending in calls[idx:]:
+                    self.messages.append(
+                        Message.tool_result(
+                            pending,
+                            "같은 도구 호출이 반복되어 중단했습니다. 다른 접근이 필요합니다.",
+                        )
+                    )
                 return True
 
             result = await self._invoke(call)

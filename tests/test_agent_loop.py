@@ -136,6 +136,29 @@ def test_반복_가드(tmp_path: Path) -> None:
     assert "반복" in result.final_text
 
 
+def test_반복가드_후_메시지_짝_유지(tmp_path: Path) -> None:
+    """반복 가드로 중단해도 tool_calls 는 전부 tool 결과로 답해 둬야 한다.
+
+    안 그러면 세션 복원·chat 재개 시 백엔드가 메시지 짝이 안 맞는다고 거부한다.
+    """
+    (tmp_path / "a.txt").write_text("x", encoding="utf-8")
+    backend = ScriptedBackend(
+        [tool_response("read_file", {"path": "a.txt"}) for _ in range(10)]
+    )
+    agent = Agent(backend, default_readonly_registry(), _ctx(tmp_path), repeat_limit=3)
+    result = run_sync(agent.run("반복"))
+
+    for i, msg in enumerate(result.messages):
+        if msg.role == "assistant" and msg.tool_calls:
+            answered = {
+                m.tool_call_id
+                for m in result.messages[i + 1 :]
+                if m.role == "tool"
+            }
+            for call in msg.tool_calls:
+                assert call.id in answered, f"메시지[{i}] tool_call {call.id} 미응답"
+
+
 def test_최대_스텝_도달(tmp_path: Path) -> None:
     reg = ToolRegistry()
 

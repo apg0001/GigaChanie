@@ -1235,7 +1235,8 @@ deny_domains:
       <h3>세션 대화 압축</h3>
       <p>대화 토큰 추정치가 임계값(<code>--compact-at</code>, 기본은 모델 컨텍스트의 70%)을 넘으면
         오래된 메시지를 요약 하나로 치환합니다. 시스템 프롬프트와 최근 메시지는 그대로 둡니다.
-        <code>chat</code>에서 <code>/compact</code>로 직접 실행할 수도 있습니다.</p>
+        <code>chat</code>에서 <code>/compact</code>로 직접 실행할 수도 있습니다.
+        요약 생성에 쓰인 토큰도 누적 사용량(<code>--budget</code> 판정, <code>--json</code>·<code>/cost</code> 수치)에 포함됩니다.</p>
 
       <h3>@파일 참조 · 이미지 · PDF</h3>
       <p>입력에 <code>@경로</code>를 쓰면 첨부됩니다 (공백 경로는 <code>@"경로 이름"</code>):</p>

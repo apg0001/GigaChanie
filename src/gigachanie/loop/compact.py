@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from gigachanie.serving.base import Backend, BackendError, Message
+from gigachanie.serving.base import Backend, BackendError, Message, Usage
 
 # 한/영 혼합 대략치: 문자수 / 3 + 메시지당 오버헤드
 _CHARS_PER_TOKEN = 3
@@ -78,18 +78,18 @@ async def compact(
     messages: list[Message],
     *,
     keep_recent: int = 8,
-) -> tuple[list[Message], bool]:
-    """(새 메시지 목록, 압축 수행 여부)."""
+) -> tuple[list[Message], bool, Usage]:
+    """(새 메시지 목록, 압축 수행 여부, 요약 호출에 쓴 토큰)."""
     if not messages or messages[0].role != "system":
-        return messages, False
+        return messages, False, Usage()
 
     split = _split_point(messages, keep_recent)
     if split >= len(messages):
-        return messages, False
+        return messages, False, Usage()
     old = messages[1:split]
     recent = messages[split:]
     if len(old) < 2 or not recent:
-        return messages, False
+        return messages, False, Usage()
 
     try:
         resp = await backend.chat(
@@ -98,13 +98,13 @@ async def compact(
             temperature=0.0,
         )
     except BackendError:
-        return messages, False
+        return messages, False, Usage()
 
     summary = resp.message.content.strip()
     if not summary:
-        return messages, False
+        return messages, False, resp.usage
 
     summary_msg = Message.user(
         "지금까지의 대화 요약 (이전 메시지는 압축됨):\n\n" + summary
     )
-    return [messages[0], summary_msg, *recent], True
+    return [messages[0], summary_msg, *recent], True, resp.usage
