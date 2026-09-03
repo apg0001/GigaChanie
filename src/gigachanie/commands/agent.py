@@ -29,6 +29,7 @@ from gigachanie.loop.procman import ProcessManager
 from gigachanie.loop.prompt import think_directive
 from gigachanie.loop.runlog import RunLogger, git_changed_files
 from gigachanie.loop.sandbox import detect_sandbox
+from gigachanie.loop.subagent import register_subagent_tool
 from gigachanie.loop.tools import ToolContext
 from gigachanie.permissions import load_permissions
 from gigachanie.serving.base import BackendError, run_sync
@@ -258,6 +259,9 @@ def agent(
         max_steps=max_steps,
         temperature=temperature,
         compact_at=resolved_compact,
+    )
+    register_subagent_tool(
+        tools, backend=backend, root=ctx.root, parent_ctx=ctx, parent_writable=writable
     )
 
     async def _go() -> int:
