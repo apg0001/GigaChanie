@@ -14,6 +14,7 @@
   오표시하지 않도록 수정 (#29)
 - Pandoc으로 HTML을 렌더링할 때 완전한 문서(`<!doctype html>`)가 생성되도록 수정 (#30)
 - 시스템 프롬프트: 편집 도구가 주어졌을 때 소형 모델이 "저는 AI라 직접 수정할 수 없습니다"라고 답하는 경향을 억제. 도구로 실제 변경을 수행하고, 편집 도구가 없을 때만 `-w` 안내를 하도록 지시 추가
+- `giga serve` / `giga mcp serve`: Windows 에서 stdout 이 cp949 라 한국어가 섞인 JSON-RPC 응답(오류 메시지 등)을 상대가 UTF-8 로 못 읽던 문제 수정 (진입점에서 stdin/stdout 을 UTF-8·LF 로 고정, `_stdio.py`)
 
 ### 추가
 - `giga plan "작업"` — 계획 모드. 읽기 도구만으로 코드베이스를 조사해 번호 매긴 실행 계획 + "확인 필요"·"위험"을 출력하고 파일은 건드리지 않음. `-x` 를 주면 계획 확인 후 곧바로 `giga agent -w --mode auto-edit` 로 실행 (#32)
@@ -43,6 +44,7 @@
 - 셸 샌드박스 — `giga agent --sandbox`: Linux=bubblewrap/firejail, macOS=sandbox-exec 로 `run_shell` 격리(쓰기를 작업 루트로 제한). `--no-network` 로 망 차단. Windows 는 미지원(승인 정책에 의존) (#15)
 - 실행 로그 — `agent`/`chat` 실행마다 `.agent/logs/runs.jsonl` 에 한 줄(시각·모델·성공·스텝·토큰·도구별 호출수·편집실패·변경파일·소요초). `giga runlog`(표), `giga runlog --stats`(통과율·합계) 로 조회. 프롬프트/모델 바꿔가며 추이 확인용 (#22b)
 - 자기 점검·업데이트 — `giga self info`(설치 방식·버전·PyPI 최신 여부), `giga self check`(파이썬·의존성·임포트 진단), `giga self update`(editable=git pull / pipx=upgrade / pip=`-U`, `--dry-run`·`--check`), `giga self fix "문제"`(에이전트를 GigaChanie 자기 저장소에 `--write --web` 로 돌려 웹·코드 조사 후 수정하고 pytest 로 검증; 소스 설치에서만) (#31)
+- `giga mcp serve` — GigaChanie 도구(read_file·grep·update_tasks 등)를 stdio MCP(JSON-RPC 2.0)로 Claude Desktop 같은 외부 에이전트에 제공. 기본 읽기 전용, `-w` 로 쓰기(승인 없이), `--web` 로 웹 도구. `.mcp.json` 에 `{"mcpServers":{"gigachanie":{"command":"giga","args":["mcp","serve"]}}}` 로 등록 (#34)
 - `giga serve` — 에디터/GUI 용 stdio JSON-RPC 2.0 브리지. `session/new`·`session/info`·`session/prompt`(이벤트 스트리밍)·`session/cancel`·`session/approve`·`session/answer`·`session/close`·`shutdown`. 알림 `session/event`·`session/approval`·`session/ask`. 승인·`ask_user` 질문을 큐로 왕복, 취소 지원, `session_start`/`stop` 훅 발화. stdout 은 JSON-RPC 만, 로그는 stderr (#23)
 - VS Code 확장 (`extension/`, TypeScript) — 활동표시줄 GigaChanie 채팅 뷰, 에이전트 이벤트 실시간 스트리밍, `suggest` 모드에서 뷰 내 허용/거부 승인, `ask_user` 는 QuickPick·입력창으로, 상태줄 위젯(모델·모드·실행중), 답변의 변경 파일 클릭 시 에디터에서 열기, 명령(새 세션·작업 실행·취소·재시작)·설정(`gigachanie.command/mode/write/web/maxSteps`). `giga serve` 를 자식 프로세스로 사용. `npm run package` 로 `.vsix` 배포 파일 생성 가능 (#23)
 - 저장소 루트에 `LICENSE`(MIT) 추가 — `pyproject.toml`·확장 매니페스트가 선언하던 라이선스의 실제 파일

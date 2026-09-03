@@ -13,8 +13,10 @@ def serve() -> None:
     VS Code 확장 등이 이 프로세스를 자식으로 띄워 세션을 만들고 프롬프트를
     보낸다. stdout 에는 JSON-RPC 만 출력되고, 로그는 stderr 로 나간다.
     """
+    from gigachanie._stdio import force_utf8_stdio
     from gigachanie.serve.server import RpcServer
 
+    force_utf8_stdio()
     try:
         RpcServer().serve_forever()
     except KeyboardInterrupt:

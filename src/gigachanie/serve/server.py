@@ -158,7 +158,10 @@ class RpcServer:
 
     def serve_forever(self) -> None:
         self._logline(f"준비됨 (protocol {PROTOCOL_VERSION})")
-        for raw in self._in:
+        while True:
+            raw = self._in.readline()
+            if not raw:
+                break
             line = raw.strip()
             if not line:
                 continue
