@@ -7,9 +7,26 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
+import sys
 
 from rich.console import Console
+
+
+def _fix_windows_console() -> None:
+    """Windows 콘솔(cp949)에서 유니코드 기호(✔ ✗ → 등) 출력 시 죽지 않도록.
+
+    stdout/stderr 를 UTF-8 로 재설정한다. 파이프·이미 UTF-8 이면 무해.
+    """
+    if os.name != "nt":
+        return
+    for stream in (sys.stdout, sys.stderr):
+        with contextlib.suppress(AttributeError, ValueError, OSError):
+            stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+
+
+_fix_windows_console()
 
 
 def no_color() -> bool:

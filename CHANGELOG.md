@@ -18,6 +18,7 @@
 - Pandoc으로 HTML을 렌더링할 때 완전한 문서(`<!doctype html>`)가 생성되도록 수정 (#30)
 - 시스템 프롬프트: 편집 도구가 주어졌을 때 소형 모델이 "저는 AI라 직접 수정할 수 없습니다"라고 답하는 경향을 억제. 도구로 실제 변경을 수행하고, 편집 도구가 없을 때만 `-w` 안내를 하도록 지시 추가
 - `giga serve` / `giga mcp serve`: Windows 에서 stdout 이 cp949 라 한국어가 섞인 JSON-RPC 응답(오류 메시지 등)을 상대가 UTF-8 로 못 읽던 문제 수정 (진입점에서 stdin/stdout 을 UTF-8·LF 로 고정, `_stdio.py`)
+- Windows 콘솔(cp949)에서 유니코드 기호(✔ ✗ → 등) 출력 시 `UnicodeEncodeError` 로 명령이 죽던 문제 수정 — `ui.py` 가 import 시 stdout/stderr 를 UTF-8 로 재설정
 
 ### 추가
 - `giga plan "작업"` — 계획 모드. 읽기 도구만으로 코드베이스를 조사해 번호 매긴 실행 계획 + "확인 필요"·"위험"을 출력하고 파일은 건드리지 않음. `-x` 를 주면 계획 확인 후 곧바로 `giga agent -w --mode auto-edit` 로 실행 (#32)

@@ -6,9 +6,11 @@
 
 - 오픈 웨이트 LLM(Qwen, Llama, DeepSeek 등)으로 동작하는 터미널 코딩 에이전트.
 - Cursor / Claude Code 처럼 프로젝트를 이해하고 파일을 편집하며 명령을 실행한다.
-- 주요 언어: Python 3.11+
+- 주요 언어: Python 3.11+ (CLI). VS Code 확장은 `extension/` 에 TypeScript.
 - 저장소: https://github.com/apg0001/GigaChanie.git
-- 진행: CLI 완성 우선 → 이후 GUI
+- 상태: CLI(31개 명령) + `giga serve` 브리지 + VS Code 확장 기능 완성. 기능명세 76개 중 75개 완료.
+- 명령: setup·doctor·ping·ask·agent·plan·prompts·chat·init·map·eval·undo·ps·kill·policy·
+  route·ensemble·divide·spec·runlog·serve·review·render·commit·pr + memory/mcp/model/sessions/self/ext 서브앱
 
 ## 빌드 · 실행
 
@@ -30,9 +32,12 @@
 - `src/gigachanie/commands/` — CLI 하위 명령 (cli.py 에서 등록만)
 - `src/gigachanie/providers/` — 하드웨어 감지, 모델 레지스트리, 추천
 - `src/gigachanie/serving/` — 백엔드 어댑터 (ollama, openai_compat), 툴콜 파싱
-- `src/gigachanie/loop/` — 에이전트 루프, 도구, 승인 정책, 편집 엔진
-- `src/gigachanie/context/` — 프로젝트 컨텍스트 파일, @참조 확장
-- `docs/` — 기능명세(체크리스트), 아키텍처, 로드맵, 이슈목록, manual.html(사용 설명서)
+- `src/gigachanie/loop/` — 에이전트 루프, 도구, 승인 정책, 편집 엔진, hunk 선택, 샌드박스, 관측
+- `src/gigachanie/context/` — 프로젝트 컨텍스트, @참조 확장, repo map, 메모리, 재사용 프롬프트, 예산
+- `src/gigachanie/orchestra/` — 라우터, 초안-검수 파이프라인, 앙상블, 작업 분할, 스펙 협업
+- `src/gigachanie/serve/` — `giga serve` stdio JSON-RPC 브리지 (VS Code 확장의 백엔드)
+- `extension/` — VS Code 확장 (별도 npm 프로젝트, `npm run compile`)
+- `docs/` — 기능명세(체크리스트), 아키텍처, 로드맵, 이슈목록, CI레시피, manual.html(사용 설명서)
 
 ## 코드 컨벤션
 
