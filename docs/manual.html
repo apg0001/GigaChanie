@@ -733,12 +733,13 @@ python -m pip install -e ".[dev]"
         설정은 Claude Code 와 같은 <code>.mcp.json</code> 형식이며, stdio 서버를 지원합니다
         (외부 SDK 없이 자체 JSON-RPC 클라이언트).</p>
       <div class="cmd">
-        <div class="cmd__line"><span class="sig">giga mcp</span> list [-C DIR] &nbsp;·&nbsp; <span class="sig">giga mcp</span> check [서버] [-C DIR]</div>
+        <div class="cmd__line"><span class="sig">giga mcp</span> list [-C DIR] &nbsp;·&nbsp; <span class="sig">giga mcp</span> check [서버] [-C DIR] &nbsp;·&nbsp; <span class="sig">giga mcp</span> serve [-C DIR] [-w] [--web]</div>
         <div class="cmd__body">
           <table>
             <tbody>
               <tr><td><code>giga mcp list</code></td><td>설정된 서버 표 (연결 안 함)</td></tr>
               <tr><td><code>giga mcp check</code></td><td>서버에 연결해 도구 목록을 가져옴</td></tr>
+              <tr><td><code>giga mcp serve</code></td><td>GigaChanie 도구를 MCP(stdio)로 외부에 <b>제공</b>. 기본 읽기 전용, <code>-w</code>=쓰기(승인 없음), <code>--web</code>=웹 도구</td></tr>
             </tbody>
           </table>
           <pre><code><span class="c"># &lt;root&gt;/.mcp.json (또는 .agent/mcp.json, ~/.config/gigachanie/mcp.json)</span>
@@ -752,7 +753,13 @@ python -m pip install -e ".[dev]"
 }</code></pre>
           <p><code>giga agent --mcp</code> 로 활성화하면 서버 도구가
             <code>&lt;서버&gt;_&lt;도구&gt;</code> 이름으로 등록됩니다. 각 호출은 network 승인을 거칩니다.
-            세션이 끝나면 서버는 자동 종료됩니다. MCP 서버로 <b>동작</b>하는 모드는 이후(#18b).</p>
+            세션이 끝나면 서버는 자동 종료됩니다.</p>
+          <pre><code><span class="c"># 반대 방향: GigaChanie 를 Claude Desktop 등의 MCP 서버로 등록</span>
+{
+  "mcpServers": {
+    "gigachanie": { "command": "giga", "args": ["mcp", "serve", "-C", "/내/프로젝트"] }
+  }
+}</code></pre>
         </div>
       </div>
     </section>

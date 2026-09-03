@@ -40,6 +40,30 @@ def list_servers(
     console.print("[dim]실제 연결·도구 확인: [cyan]giga mcp check[/cyan][/dim]")
 
 
+@app.command("serve")
+def serve(
+    root: Path = typer.Option(Path("."), "--root", "-C", help="도구가 접근할 작업 루트."),
+    write: bool = typer.Option(
+        False, "--write", "-w", help="쓰기/실행 도구도 노출 (승인 없이 실행 — 주의)."
+    ),
+    web: bool = typer.Option(False, "--web", help="웹 도구(web_search, web_fetch) 노출."),
+) -> None:
+    """GigaChanie 도구를 MCP(stdio)로 외부 에이전트에 제공한다.
+
+    Claude Desktop 등의 `.mcp.json` 에 다음처럼 등록한다:
+    `{"mcpServers": {"gigachanie": {"command": "giga", "args": ["mcp", "serve"]}}}`
+    """
+    from gigachanie._stdio import force_utf8_stdio
+    from gigachanie.mcp.server import MCPServer
+
+    r = root.resolve()
+    if not r.is_dir():
+        console.print(f"[red]디렉터리가 아닙니다: {root}[/red]")
+        raise typer.Exit(code=1)
+    force_utf8_stdio()
+    MCPServer(r, write=write, web=web).serve_forever()
+
+
 @app.command("check")
 def check(
     root: Path = typer.Option(Path("."), "--root", "-C"),
