@@ -111,8 +111,35 @@ def extract_first_json(text: str) -> Any | None:
     return None
 
 
-def parse_prompt_toolcalls(content: str) -> tuple[list[ToolCall], str]:
-    """본문에서 도구 호출 블록을 추출한다.
+def _obj_to_call(obj: Any, known: set[str] | None) -> ToolCall | None:
+    """{"name": ..., "arguments": ...} 형태의 dict 를 ToolCall 로. 아니면 None."""
+    if not isinstance(obj, dict):
+        return None
+    name = obj.get("name") or obj.get("tool") or obj.get("function")
+    if isinstance(name, dict):  # {"function": {"name": ...}}
+        name = name.get("name")
+    if not name or not isinstance(name, str):
+        return None
+    if known is not None and name not in known:
+        return None
+    args = obj.get("arguments")
+    if args is None:
+        args = obj.get("args")
+    if args is None:
+        args = obj.get("parameters")
+    if args is None:
+        args = obj.get("input", {})
+    return ToolCall(id=_new_id(), name=name, arguments=_coerce_arguments(args))
+
+
+def parse_prompt_toolcalls(
+    content: str, known: set[str] | None = None
+) -> tuple[list[ToolCall], str]:
+    """본문에서 도구 호출을 추출한다.
+
+    - ```tool``` 코드블록 / `<tool_call>` 태그
+    - `known` 이 주어지면, 본문이 통째로(또는 앞부분이) `{"name": <도구>, ...}`
+      JSON 인 경우도 인식 (네이티브 툴콜에 실패하고 본문에 JSON 을 뱉는 모델 대응)
 
     반환: (도구 호출 목록, 블록을 제거한 나머지 본문)
     """
@@ -126,31 +153,44 @@ def parse_prompt_toolcalls(content: str) -> tuple[list[ToolCall], str]:
                 obj = json.loads(body)
             except json.JSONDecodeError:
                 obj = extract_first_json(body)
-            if not isinstance(obj, dict):
-                continue
-            name = obj.get("name") or obj.get("tool")
-            if not name:
-                continue
-            args = obj.get("arguments")
-            if args is None:
-                args = obj.get("args", {})
-            calls.append(
-                ToolCall(id=_new_id(), name=name, arguments=_coerce_arguments(args))
-            )
-            spans.append((m.start(), m.end()))
+            call = _obj_to_call(obj, None)
+            if call is not None:
+                calls.append(call)
+                spans.append((m.start(), m.end()))
 
-    if not spans:
-        return [], content
+    if spans:
+        spans.sort()
+        cleaned_parts: list[str] = []
+        cursor = 0
+        for s, e in spans:
+            cleaned_parts.append(content[cursor:s])
+            cursor = e
+        cleaned_parts.append(content[cursor:])
+        return calls, "".join(cleaned_parts).strip()
 
-    spans.sort()
-    cleaned_parts: list[str] = []
-    cursor = 0
-    for s, e in spans:
-        cleaned_parts.append(content[cursor:s])
-        cursor = e
-    cleaned_parts.append(content[cursor:])
-    cleaned = "".join(cleaned_parts).strip()
-    return calls, cleaned
+    # 펜스 없이 본문에 바로 JSON 을 뱉은 경우 (known 필요)
+    if known:
+        stripped = content.strip()
+        obj = extract_first_json(stripped)
+        recovered: list[ToolCall] = []
+        if isinstance(obj, list):
+            recovered = [c for c in (_obj_to_call(o, known) for o in obj) if c]
+        elif isinstance(obj, dict):
+            inner = obj.get("tool_calls") or obj.get("tool_call")
+            if isinstance(inner, list):
+                recovered = [c for c in (_obj_to_call(o, known) for o in inner) if c]
+            elif isinstance(inner, dict):
+                one = _obj_to_call(inner, known)
+                recovered = [one] if one else []
+            else:
+                one = _obj_to_call(obj, known)
+                recovered = [one] if one else []
+        if recovered:
+            # 본문이 사실상 JSON 뿐이면 통째로 제거
+            leftover = "" if stripped.startswith(("{", "[")) else content
+            return recovered, leftover.strip()
+
+    return [], content
 
 
 def render_prompt_tool_docs(tools: list[dict[str, Any]] | list[Any]) -> str:

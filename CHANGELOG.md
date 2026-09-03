@@ -10,6 +10,8 @@
 - `.github/workflows/ci.yml`(ruff·mypy·pytest 매트릭스 + 확장 컴파일) + `docs/CI레시피.md`(giga review / agent --json / eval 을 CI 잡으로 쓰는 워크플로 예제) 추가 (#35)
 
 ### 수정
+- 네이티브 툴콜에 실패하고 본문에 `{"name": "...", "arguments": {...}}` JSON 을 그대로 뱉는 모델(qwen2.5-coder:7b 등) 대응 — 등록된 도구 이름과 일치하면 실제 도구 호출로 복구. 펜스(```tool```)·`<tool_call>` 태그 없이도, `parameters`/`input` 키, `{"tool_calls": [...]}` 래핑도 인식 (#49)
+- `giga chat` / `giga agent` 에서 스트리밍된 답변이 하단에 한 번 더 반복 출력되던 문제 수정 — 이벤트 프린터가 이미 답변을 보여줬으면 최종 블록을 생략 (#49)
 - Windows에서 Ollama가 표준 설치 경로에 있지만 현재 프로세스 `PATH`에 없을 때도
   설치·실행 상태를 인식하고, winget의 "적용 가능한 업그레이드 없음"을 실패로
   오표시하지 않도록 수정 (#29)

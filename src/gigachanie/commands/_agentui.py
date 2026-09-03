@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable
 from pathlib import Path
 
 import typer
@@ -109,21 +108,33 @@ def _print_tasks(text: str) -> None:
             console.print(f"  [dim]{s}[/dim]")
 
 
-def make_event_printer() -> Callable[[AgentEvent], None]:
-    state = {"streaming": False}
+class _Printer:
+    """이벤트 프린터. `.answered` 로 이번 실행의 최종 답변을 이미 출력했는지 알 수 있다."""
 
-    def handle(ev: AgentEvent) -> None:
+    def __init__(self) -> None:
+        self._streaming = False
+        self.answered = False
+
+    def __call__(self, ev: AgentEvent) -> None:
+        self.handle(ev)
+
+    def handle(self, ev: AgentEvent) -> None:
         if ev.kind == "step":
             if ev.step > 1:
                 console.print()
+            self.answered = False
             console.rule(f"[dim]step {ev.step}[/dim]", style="dim")
         elif ev.kind == "assistant_delta":
             console.print(ev.text, end="", markup=False, soft_wrap=True)
-            state["streaming"] = True
+            self._streaming = True
+            self.answered = True
         elif ev.kind == "assistant_text":
-            if state["streaming"]:
+            if self._streaming:
                 console.print()
-                state["streaming"] = False
+                self._streaming = False
+            elif ev.text.strip():
+                console.print(ev.text, markup=False, soft_wrap=True)
+                self.answered = True
         elif ev.kind == "tool_call":
             if ev.tool_name == "update_tasks":
                 return
@@ -141,4 +152,6 @@ def make_event_printer() -> Callable[[AgentEvent], None]:
         elif ev.kind == "error":
             console.print(f"[red]오류: {ev.text}[/red]")
 
-    return handle
+
+def make_event_printer() -> _Printer:
+    return _Printer()

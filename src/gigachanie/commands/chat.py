@@ -415,8 +415,9 @@ async def _run_turn(session: ChatSession, text: str) -> None:
     session.usage_completion += result.usage.completion_tokens
     session._persist()
     console.print()
-    console.rule("[bold]답변[/bold]")
-    console.print(result.final_text or "(빈 응답)", markup=False)
+    if not printer.answered:
+        # 스트리밍으로 이미 보여준 게 없으면 최종 답변을 한 번 출력
+        console.print(result.final_text or "(빈 응답)", markup=False)
     console.print(
         f"[dim]스텝 {result.steps} · {result.stop_reason} · "
         f"토큰 {result.usage.total_tokens} (누적 "

@@ -255,11 +255,12 @@ def agent(
         )
     resolved_compact = compact_at or int((load_config().context or 32000) * 0.7)
     runlog = RunLogger(ctx.root, task=task_text, model=backend.model)
-    _print_ev = (lambda _ev: None) if as_json else make_event_printer()
+    _print_ev = make_event_printer()
 
     def handler(ev: AgentEvent) -> None:
         runlog.observe(ev)
-        _print_ev(ev)
+        if not as_json:
+            _print_ev(ev)
 
     ag = Agent(
         backend,
@@ -346,8 +347,9 @@ def agent(
             return 0 if result.ok else 1
 
         console.print()
-        console.rule("[bold]결과[/bold]")
-        console.print(result.final_text or "(빈 응답)", markup=False)
+        if not _print_ev.answered:
+            console.rule("[bold]결과[/bold]")
+            console.print(result.final_text or "(빈 응답)", markup=False)
         console.print(
             f"[dim]스텝 {result.steps} · 종료 {result.stop_reason} · "
             f"토큰 {result.usage.total_tokens}[/dim]"

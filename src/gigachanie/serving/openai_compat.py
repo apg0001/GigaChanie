@@ -215,8 +215,9 @@ class OpenAICompatBackend:
         raw_calls = [tool_calls_acc[k] for k in sorted(tool_calls_acc)]
         calls = normalize_native(raw_calls)
         cleaned = content
-        if not calls and tools and self.tool_mode == "prompt":
-            calls, cleaned = parse_prompt_toolcalls(content)
+        if not calls and tools:
+            known = {t.name for t in tools}
+            calls, cleaned = parse_prompt_toolcalls(content, known)
         return ChatResponse(
             message=Message.assistant(cleaned, calls),
             finish_reason=_normalize_finish(finish_reason, bool(calls)),
@@ -237,8 +238,9 @@ class OpenAICompatBackend:
         calls: list[ToolCall] = normalize_native(raw_msg.get("tool_calls"))
 
         cleaned = content
-        if not calls and tools and self.tool_mode == "prompt":
-            calls, cleaned = parse_prompt_toolcalls(content)
+        if not calls and tools:
+            known = {t.name for t in tools}
+            calls, cleaned = parse_prompt_toolcalls(content, known)
 
         usage_raw = data.get("usage") or {}
         usage = Usage(
