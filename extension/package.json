@@ -5,6 +5,15 @@
   "version": "0.0.1",
   "publisher": "gigachanie",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/apg0001/GigaChanie.git",
+    "directory": "extension"
+  },
+  "homepage": "https://github.com/apg0001/GigaChanie",
+  "bugs": {
+    "url": "https://github.com/apg0001/GigaChanie/issues"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -107,11 +116,14 @@
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "vscode:prepublish": "npm run compile"
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package --no-dependencies",
+    "publish": "vsce publish --no-dependencies"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.9.2",
     "typescript": "^5.4.0"
   }
 }

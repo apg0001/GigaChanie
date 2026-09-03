@@ -1,7 +1,15 @@
 # GigaChanie for VS Code
 
-오픈 웨이트 LLM 코딩 에이전트 [GigaChanie](../) 를 VS Code 에서 사용하는 확장입니다.
+오픈 웨이트 LLM 코딩 에이전트 [GigaChanie](https://github.com/apg0001/GigaChanie) 를
+VS Code 에서 사용하는 확장입니다.
 CLI(`giga`)를 `giga serve` stdio JSON-RPC 브리지로 띄워 통신합니다.
+
+## 설치
+
+- 개발/사내 배포: `npm run package` → `gigachanie-vscode-<버전>.vsix` 생성 →
+  `code --install-extension gigachanie-vscode-0.0.1.vsix` (또는 VS Code 확장 탭 → … → "VSIX에서 설치").
+- Marketplace 공개 배포: `vsce` 퍼블리셔 계정을 만들고 `package.json` 의 `publisher` 를
+  실제 퍼블리셔 ID 로 바꾼 뒤 `npm run publish` (Azure DevOps PAT 필요).
 
 ## 요구사항
 
