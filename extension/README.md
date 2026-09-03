@@ -48,7 +48,7 @@ VS Code 에서 이 폴더를 열고 F5 (Extension Development Host) 로 실행�
 | 메서드 | 방향 | 설명 |
 | --- | --- | --- |
 | `initialize` | → | 버전/프로토콜/cwd |
-| `session/new` | → | `{root, write, web, mode, maxSteps, prompts, think, thinkHard, budget, resume}` → `{sessionId, model, tools, mode, resumedTurns}` |
+| `session/new` | → | `{root, write, web, mode, maxSteps, prompts, think, thinkHard, budget, resume}` → `{sessionId, storeId, model, tools, mode, resumedTurns}` (대화는 `storeId` 로 자동 저장·재개) |
 | `session/info` | → | 현재 모델·모드·도구·실행 여부·턴 수 |
 | `session/history` | → | 저장된 세션 목록 (id·제목·모델·턴) |
 | `session/prompt` | → | `{sessionId, text}` → `{ok, finalText, stopReason, steps, tokens, changedFiles}` |

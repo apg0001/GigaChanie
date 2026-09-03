@@ -1047,9 +1047,9 @@ stop:
           <table>
             <tbody>
               <tr><td><code>initialize</code></td><td>→ 버전·프로토콜·cwd</td></tr>
-              <tr><td><code>session/new</code></td><td><code>{root, write, web, mode, maxSteps, prompts, think, thinkHard, budget, resume}</code> → <code>{sessionId, model, tools, mode, resumedTurns}</code>. <code>session_start</code> 훅 발화</td></tr>
+              <tr><td><code>session/new</code></td><td><code>{root, write, web, mode, maxSteps, prompts, think, thinkHard, budget, resume}</code> → <code>{sessionId, storeId, model, tools, mode, resumedTurns}</code>. <code>session_start</code> 훅 발화. 대화는 프롬프트마다·종료 시 <code>storeId</code> 로 저장됨</td></tr>
               <tr><td><code>session/info</code></td><td>현재 모델·모드·도구·실행 여부·턴 수</td></tr>
-              <tr><td><code>session/history</code></td><td>저장된 세션 목록 (id·제목·모델·턴 수)</td></tr>
+              <tr><td><code>session/history</code></td><td>저장된 세션 목록 (id·제목·모델·턴 수) — <code>giga chat</code> 과 <code>giga serve</code> 대화 모두 포함</td></tr>
               <tr><td><code>session/prompt</code></td><td><code>{sessionId, text}</code> → <code>{ok, finalText, stopReason, steps, tokens, changedFiles}</code>. 실행 중 <code>session/event</code> 알림 스트리밍</td></tr>
               <tr><td><code>session/cancel</code></td><td>실행 중인 프롬프트 취소</td></tr>
               <tr><td><code>session/approve</code></td><td><code>{sessionId, requestId, decision}</code> — allow / deny / always</td></tr>
