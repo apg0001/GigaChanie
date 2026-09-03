@@ -148,3 +148,12 @@ def test_python_펜스_예시코드는_안건드림() -> None:
     content = "사용 예:\n```python\nresult = compute(x)\nprint(result)\n```\n끝입니다."
     calls, cleaned = parse_prompt_toolcalls(content, known)
     assert calls == [] and cleaned == content
+
+
+def test_lenient_이스케이프안된_개행_복구() -> None:
+    # 소형 모델이 content 에 진짜 개행을 넣어 보내는 흔한 실수
+    known = {"write_file"}
+    content = '{"name": "write_file", "arguments": {"content": "l1\nl2\nl3", "path": "a.txt"}}'
+    calls, _ = parse_prompt_toolcalls(content, known)
+    assert len(calls) == 1
+    assert calls[0].arguments == {"content": "l1\nl2\nl3", "path": "a.txt"}

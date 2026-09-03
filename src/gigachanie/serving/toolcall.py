@@ -13,7 +13,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import json
 import re
 import uuid
@@ -27,6 +26,46 @@ _TOOL_FENCE_RE = re.compile(r"```(?:tool|tool_call)\s*\n(?P<body>.*?)```", re.DO
 _TOOL_TAG_RE = re.compile(r"<tool_call>\s*(?P<body>.*?)\s*</tool_call>", re.DOTALL)
 # 빈 코드펜스 정리용
 _EMPTY_FENCE_RE = re.compile(r"```[^\n`]*\n\s*```")
+
+
+_CTRL_ESCAPE = {"\n": "\\n", "\r": "\\r", "\t": "\\t"}
+
+
+def _lenient_loads(snippet: str) -> Any | None:
+    """느슨한 JSON 파서: 문자열 안의 이스케이프 안 된 개행·탭을 고쳐 재시도한다.
+
+    소형 모델이 write_file content 에 진짜 개행을 넣어 보내는 경우가 많다.
+    """
+    try:
+        return json.loads(snippet)
+    except json.JSONDecodeError:
+        pass
+    out: list[str] = []
+    in_str = False
+    esc = False
+    for ch in snippet:
+        if in_str:
+            if esc:
+                out.append(ch)
+                esc = False
+            elif ch == "\\":
+                out.append(ch)
+                esc = True
+            elif ch == '"':
+                out.append(ch)
+                in_str = False
+            elif ch in _CTRL_ESCAPE:
+                out.append(_CTRL_ESCAPE[ch])
+            else:
+                out.append(ch)
+        else:
+            out.append(ch)
+            if ch == '"':
+                in_str = True
+    try:
+        return json.loads("".join(out))
+    except json.JSONDecodeError:
+        return None
 
 
 def extract_all_json_spans(text: str) -> list[tuple[Any, int, int]]:
@@ -62,8 +101,9 @@ def extract_all_json_spans(text: str) -> list[tuple[Any, int, int]]:
             elif c == closer:
                 depth -= 1
                 if depth == 0:
-                    with contextlib.suppress(json.JSONDecodeError):
-                        out.append((json.loads(text[i : j + 1]), i, j + 1))
+                    val = _lenient_loads(text[i : j + 1])
+                    if val is not None:
+                        out.append((val, i, j + 1))
                     i = j + 1
                     matched = True
                     break
