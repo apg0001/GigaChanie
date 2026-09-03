@@ -30,10 +30,17 @@ async def _run_background(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     if not allowed:
         return ToolResult.error(f"실행 거부됨 ({reason}): {cmd}")
 
-    h = _pm(ctx).start(cmd, cwd=cwd)
+    wrap = None
+    sb = ctx.sandbox
+    if sb is not None and getattr(sb, "available", False):
+        wrap = lambda argv: sb.wrap(  # noqa: E731
+            argv, root=ctx.root, allow_net=ctx.allow_network
+        )
+    h = _pm(ctx).start(cmd, cwd=cwd, wrap=wrap)
+    tag = f" [{sb.tool}]" if wrap is not None else ""
     return ToolResult(
         content=(
-            f"시작됨: id={h.id} pid={h.pid}\n{cmd}\n"
+            f"시작됨: id={h.id} pid={h.pid}{tag}\n{cmd}\n"
             f"로그 확인은 tail_logs(id=\"{h.id}\"), 종료는 stop_process(id=\"{h.id}\")"
         )
     )

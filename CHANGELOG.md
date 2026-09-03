@@ -58,6 +58,11 @@
 - VS Code 확장 (`extension/`, TypeScript) — 활동표시줄 GigaChanie 채팅 뷰, 에이전트 이벤트 실시간 스트리밍, `suggest` 모드에서 뷰 내 허용/거부 승인, `ask_user` 는 QuickPick·입력창으로, 상태줄 위젯(모델·모드·실행중), 답변의 변경 파일 클릭 시 에디터에서 열기, 명령(새 세션·작업 실행·취소·재시작)·설정(`gigachanie.command/mode/write/web/maxSteps`). `giga serve` 를 자식 프로세스로 사용. `npm run package` 로 `.vsix` 배포 파일 생성 가능 (#23)
 - 저장소 루트에 `LICENSE`(MIT) 추가 — `pyproject.toml`·확장 매니페스트가 선언하던 라이선스의 실제 파일
 
+### 개선
+- `grep` 도구: `rg`(ripgrep)가 있으면 그걸로 검색(빠름), 없으면 순수 파이썬 폴백 (#45, B5)
+- `giga chat` `/diff` 슬래시 명령 — 작업 트리 변경을 rich diff 로 (`--stat` 또는 git 인자 전달) (#45, H5)
+- `giga agent --sandbox`: `run_background` 로 띄우는 프로세스도 `run_shell` 과 동일하게 격리 (#45, F4)
+
 ### 변경
 - `agent`/`chat` 의 `--mode` 기본값이 `suggest` 고정 → permissions.yaml 의 `mode` 값 (없으면 suggest)
 - `giga doctor` — OS/CPU/RAM/GPU 감지 후 실행 가능한 오픈모델 추천 (#3)

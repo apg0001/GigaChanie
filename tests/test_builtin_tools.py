@@ -63,6 +63,28 @@ def test_grep(tmp_path: Path) -> None:
     assert "일치 없음" in none.content
 
 
+def test_grep_ripgrep_사용(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import subprocess
+
+    from gigachanie.loop import builtin_tools as bt
+
+    _sample_tree(tmp_path)
+    monkeypatch.setattr(bt.shutil, "which", lambda name: "/usr/bin/rg" if name == "rg" else None)
+
+    captured = {}
+
+    def fake_run(argv, **kw):
+        captured["argv"] = argv
+        return subprocess.CompletedProcess(
+            argv, 0, stdout="src/util.py:1:# TODO: 리팩터\n", stderr=""
+        )
+
+    monkeypatch.setattr(bt.subprocess, "run", fake_run)
+    res = _run("grep", {"pattern": "TODO"}, tmp_path)
+    assert captured["argv"][0] == "/usr/bin/rg"
+    assert "src/util.py:1" in res.content
+
+
 def test_경로_탈출_차단(tmp_path: Path) -> None:
     (tmp_path / "inside").mkdir()
     ctx = ToolContext(root=tmp_path / "inside")
