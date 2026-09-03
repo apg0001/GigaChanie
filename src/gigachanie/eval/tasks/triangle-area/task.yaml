@@ -1,0 +1,10 @@
+prompt: geom.py 에 triangle_area(base, height) 함수를 추가해라. 넓이는 base*height/2 다. 기존 rect_area
+  는 그대로.
+max_steps: 10
+check:
+- type: file_contains
+  path: geom.py
+  text: def triangle_area
+- type: file_contains
+  path: geom.py
+  text: def rect_area

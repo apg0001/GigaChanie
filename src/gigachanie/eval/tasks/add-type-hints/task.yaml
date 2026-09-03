@@ -1,0 +1,10 @@
+prompt: pt.py 의 scale 함수에 타입 힌트를 추가해라. point 는 tuple[float, float], factor 는 float,
+  반환도 tuple[float, float] 다.
+max_steps: 10
+check:
+- type: file_contains
+  path: pt.py
+  text: 'factor: float'
+- type: file_contains
+  path: pt.py
+  text: -> tuple

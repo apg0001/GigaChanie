@@ -1,0 +1,6 @@
+prompt: io_util.py 의 load 가 파일 핸들을 닫지 않는다. with 문으로 안전하게 읽도록 고쳐라.
+max_steps: 10
+check:
+- type: file_contains
+  path: io_util.py
+  text: with open

@@ -1,0 +1,10 @@
+prompt: report.py 의 build 함수에서 합계 계산 부분을 sum_amounts(rows) 라는 별도 함수로 추출해라. build 는
+  그 함수를 호출하도록 바꾼다.
+max_steps: 14
+check:
+- type: file_contains
+  path: report.py
+  text: def sum_amounts
+- type: file_contains
+  path: report.py
+  text: sum_amounts(

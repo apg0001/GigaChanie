@@ -15,6 +15,7 @@ from prompt_toolkit.history import FileHistory
 from rich.markup import escape
 
 from gigachanie.commands._agentui import ask_user, make_approver, make_event_printer
+from gigachanie.commands._chatcomplete import ChatCompleter
 from gigachanie.commands._slashfiles import load_custom_commands
 from gigachanie.config import load_config
 from gigachanie.context import (
@@ -510,6 +511,8 @@ def chat(
     pt: PromptSession[str] = PromptSession(
         history=FileHistory(str(hist_path)),
         bottom_toolbar=_toolbar if show_toolbar else None,
+        completer=ChatCompleter(root_path, session.custom_commands.keys()),
+        complete_while_typing=True,
     )
 
     console.print("[bold]GigaChanie chat[/bold] · /help 로 명령 확인, /exit 로 종료")

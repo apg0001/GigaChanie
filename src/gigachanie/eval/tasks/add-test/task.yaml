@@ -1,0 +1,9 @@
+prompt: strutil.py 의 reverse_words 를 검증하는 test_strutil.py 를 새로 만들어라. pytest 로 실행 가능해야
+  하고 최소 한 개의 assert 가 있어야 한다.
+max_steps: 12
+check:
+- type: file_present
+  path: test_strutil.py
+- type: shell
+  cmd: python -m pytest -q test_strutil.py
+  cwd: .

@@ -71,6 +71,9 @@
 - 모델 슬롯 언로드 — `giga ensemble`/`divide`/`spec` 이 각 모델 사용 후 Ollama 에서 언로드(keep_alive:0)해 다음 모델을 위한 VRAM 확보 (#48, E6)
 - `giga chat` 하단 상태줄 — 모델·모드·쓰기·웹·턴·누적 토큰 상시 표시 (`GIGA_PLAIN` 이면 생략) (#48, H7)
 - OpenTelemetry — `GIGA_OTEL=1` + `pip install gigachanie[otel]` 시 agent run 당 span 을 OTLP 로 내보냄. 없으면 no-op (#48, I4)
+- `giga eval` 태스크셋 3 → 15종(이름변경·타입힌트·죽은코드·docstring·함수추출·설정·CLI·상수·테스트작성·파일핸들·빈리스트·기하). 판정 `file_absent_text` 추가 (#50, J2)
+- `giga eval` 회귀 게이트 — 같은 모델의 통과율을 `.agent/eval-history.jsonl` 에 기록, 직전 대비 하락하면 종료코드 2 (`--no-history` 로 끔) (#50, J4)
+- `giga chat` 자동완성 — `/` 입력 시 슬래시 명령(+커스텀), `@` 입력 시 워크스페이스 파일·디렉터리 (#50)
 
 ### 변경
 - `agent`/`chat` 의 `--mode` 기본값이 `suggest` 고정 → permissions.yaml 의 `mode` 값 (없으면 suggest)

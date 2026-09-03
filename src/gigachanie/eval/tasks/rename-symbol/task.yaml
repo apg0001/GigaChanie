@@ -1,0 +1,9 @@
+prompt: mathx.py 의 함수 compute_sum 을 add_all 로 이름을 바꿔라. 호출부(run)도 같이 바꿔야 한다.
+max_steps: 12
+check:
+- type: file_contains
+  path: mathx.py
+  text: def add_all
+- type: file_absent_text
+  path: mathx.py
+  text: compute_sum

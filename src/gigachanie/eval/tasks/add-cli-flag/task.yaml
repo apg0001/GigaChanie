@@ -1,0 +1,9 @@
+prompt: cli.py 에 --upper 플래그를 추가해라. argv 에 --upper 가 있으면 인사말을 대문자로 출력한다.
+max_steps: 12
+check:
+- type: file_contains
+  path: cli.py
+  text: --upper
+- type: file_contains
+  path: cli.py
+  text: upper()

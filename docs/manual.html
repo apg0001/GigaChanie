@@ -774,14 +774,17 @@ python -m pip install -e ".[dev]"
         복제해 에이전트를 <code>full-auto</code>로 실행한 뒤, 판정(파일 내용/존재/셸 종료코드)으로
         통과 여부를 봅니다. 모델·프롬프트를 바꿀 때 회귀를 잡는 용도입니다.</p>
       <div class="cmd">
-        <div class="cmd__line"><span class="sig">giga eval</span> [-T 태스크디렉터리] [-t 태스크이름 …] [--json]</div>
+        <div class="cmd__line"><span class="sig">giga eval</span> [-T 태스크디렉터리] [-t 태스크이름 …] [--json] [-C DIR] [--no-history]</div>
         <div class="cmd__body">
-          <p>기본은 내장 태스크셋(<code>add-return-value</code>, <code>create-greet</code>,
-            <code>fix-failing-test</code>)입니다. 전부 통과해야 종료코드 0 — CI 게이트로 쓸 수 있습니다.</p>
+          <p>기본은 내장 태스크셋 15종(값 반환·새 파일·실패 테스트·이름 변경·타입힌트·죽은 코드·
+            docstring·함수 추출·설정·CLI 플래그·상수 추출·테스트 작성·파일 핸들·빈 리스트·기하).
+            전부 통과해야 종료코드 0.</p>
+          <p><b>회귀 게이트</b>: 같은 모델의 통과율을 <code>.agent/eval-history.jsonl</code>에 기록하고,
+            직전 실행 대비 떨어지면 종료코드 2. <code>--no-history</code>로 끕니다.</p>
           <p>태스크 디렉터리 구조: <code>&lt;name&gt;/task.yaml</code>(prompt·max_steps·check) +
             <code>&lt;name&gt;/repo/</code>(초기 파일 트리). 판정 유형:
-            <code>file_contains</code> · <code>file_present</code> · <code>file_absent</code> ·
-            <code>shell</code>(종료코드 0).</p>
+            <code>file_contains</code> · <code>file_absent_text</code> · <code>file_present</code> ·
+            <code>file_absent</code> · <code>shell</code>(종료코드 0).</p>
         </div>
       </div>
     </section>
@@ -870,6 +873,11 @@ pipeline:
     <section id="ext">
       <h2>커스텀 명령 · 훅</h2>
       <p class="section-note"><code>chat</code>을 프로젝트에 맞게 확장합니다.</p>
+
+      <h3>자동완성</h3>
+      <p><code>giga chat</code>에서 <code>/</code> 를 치면 슬래시 명령(+커스텀 명령)이,
+        <code>@</code> 를 치면 워크스페이스의 파일·디렉터리가 자동완성됩니다
+        (Tab / 화살표로 선택).</p>
 
       <h3>커스텀 슬래시 명령</h3>
       <p><code>&lt;root&gt;/.agent/commands/&lt;이름&gt;.md</code>를 만들면 <code>chat</code>에서
