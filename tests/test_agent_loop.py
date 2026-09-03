@@ -35,6 +35,27 @@ def test_도구호출_후_최종답변(tmp_path: Path) -> None:
     assert any(m.role == "tool" for m in result.messages)
 
 
+def test_emit이_예외를_던져도_체크포인트_턴은_닫힌다(tmp_path: Path) -> None:
+    import contextlib
+
+    from gigachanie.loop.checkpoint import CheckpointStore
+
+    class _Boom(Exception):
+        pass
+
+    store = CheckpointStore(tmp_path)
+    ctx = ToolContext(root=tmp_path, checkpoints=store)
+    backend = ScriptedBackend([text_response("답")])
+    agent = Agent(backend, default_readonly_registry(), ctx)
+
+    def bad_emit(ev: AgentEvent) -> None:
+        raise _Boom
+
+    with contextlib.suppress(_Boom):
+        run_sync(agent.run("hi", on_event=bad_emit))
+    assert store._current is None  # 턴이 finally 로 닫혔다
+
+
 def test_알수없는_도구는_오류로_피드백(tmp_path: Path) -> None:
     backend = ScriptedBackend(
         [
