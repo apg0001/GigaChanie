@@ -62,6 +62,8 @@
 - `grep` 도구: `rg`(ripgrep)가 있으면 그걸로 검색(빠름), 없으면 순수 파이썬 폴백 (#45, B5)
 - `giga chat` `/diff` 슬래시 명령 — 작업 트리 변경을 rich diff 로 (`--stat` 또는 git 인자 전달) (#45, H5)
 - `giga agent --sandbox`: `run_background` 로 띄우는 프로세스도 `run_shell` 과 동일하게 격리 (#45, F4)
+- `giga agent --budget N` — 누적 토큰이 N 을 넘으면 중단(`stop_reason=budget`). Ctrl-C 로 중단하면 부분 결과를 깔끔히 반환(`stop_reason=cancelled`) (#46, A2)
+- `@경로` 참조가 존재하지 않는 파일이면 경고, 디렉터리면 파일 지정 안내. 확장자·경로 없는 평범한 단어는 무시 (#46, C10)
 
 ### 변경
 - `agent`/`chat` 의 `--mode` 기본값이 `suggest` 고정 → permissions.yaml 의 `mode` 값 (없으면 suggest)

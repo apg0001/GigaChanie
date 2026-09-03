@@ -49,6 +49,38 @@ def test_알수없는_도구는_오류로_피드백(tmp_path: Path) -> None:
     assert tool_msgs and "알 수 없는 도구" in tool_msgs[0].content
 
 
+def test_토큰_예산_초과시_중단(tmp_path: Path) -> None:
+    from gigachanie.serving.base import Usage
+
+    def big(text: str):
+        r = text_response(text)
+        r.usage = Usage(prompt_tokens=50, completion_tokens=10)
+        return r
+
+    (tmp_path / "a.txt").write_text("x", encoding="utf-8")
+    backend = ScriptedBackend(
+        [tool_response("read_file", {"path": "a.txt"}) for _ in range(5)]
+    )
+    for r in backend._responses:
+        r.usage = Usage(prompt_tokens=50, completion_tokens=10)
+    agent = Agent(
+        backend, default_readonly_registry(), _ctx(tmp_path), token_budget=80
+    )
+    result = run_sync(agent.run("반복"))
+    assert result.stop_reason == "budget"
+
+
+def test_ctrl_c_는_깔끔하게_중단(tmp_path: Path) -> None:
+    class Boom(ScriptedBackend):
+        async def chat(self, *a, **k):  # type: ignore[override]
+            raise KeyboardInterrupt
+
+    agent = Agent(Boom([]), default_readonly_registry(), _ctx(tmp_path))
+    result = run_sync(agent.run("작업"))
+    assert result.stop_reason == "cancelled"
+    assert "중단" in result.final_text
+
+
 def test_반복_가드(tmp_path: Path) -> None:
     (tmp_path / "a.txt").write_text("x", encoding="utf-8")
     # 같은 도구 호출을 계속 반환

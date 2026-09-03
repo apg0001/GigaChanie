@@ -67,7 +67,13 @@ def expand_refs(text: str, root: Path) -> ExpandedRefs:
         if target != root and root not in target.parents:
             result.notes.append(f"@{rel}: 작업 루트 밖 - 무시")
             continue
+        if target.is_dir():
+            result.notes.append(f"@{rel}: 디렉터리 - 파일을 지정하세요")
+            continue
         if not target.is_file():
+            # 파일처럼 보이는 참조(경로 구분자 또는 확장자)면 없다고 알린다
+            if "/" in rel or "\\" in rel or "." in Path(rel).name:
+                result.notes.append(f"@{rel}: 파일을 찾을 수 없습니다")
             continue
 
         ext = target.suffix.lower()

@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -40,7 +41,7 @@ class AgentEvent:
 
 EventHandler = Callable[[AgentEvent], None]
 
-StopReason = Literal["done", "max_steps", "error"]
+StopReason = Literal["done", "max_steps", "error", "cancelled", "budget"]
 
 
 @dataclass
@@ -79,6 +80,7 @@ class Agent:
         temperature: float = 0.0,
         reasoning: str | None = None,
         max_tokens: int | None = None,
+        token_budget: int | None = None,
         history: Sequence[Message] | None = None,
         repeat_limit: int = 3,
         compact_at: int | None = None,
@@ -96,6 +98,7 @@ class Agent:
         self.temperature = temperature
         self.reasoning = reasoning
         self.max_tokens = max_tokens
+        self.token_budget = token_budget
         self.repeat_limit = repeat_limit
         self.compact_at = compact_at
         self.messages: list[Message] = [Message.system(self.system_prompt)]
@@ -122,9 +125,21 @@ class Agent:
         stop: StopReason = "max_steps"
         final_text = ""
         self._usage = Usage()  # 이 run() 동안의 사용량
+        step = 0
 
         for step in range(1, self.max_steps + 1):
             emit(AgentEvent(kind="step", step=step))
+
+            if (
+                self.token_budget is not None
+                and self._usage.total_tokens >= self.token_budget
+            ):
+                final_text = (
+                    f"토큰 예산({self.token_budget})에 도달해 중단했습니다. "
+                    "작업이 완료되지 않았을 수 있습니다."
+                )
+                stop = "budget"
+                break
 
             if should_compact(self.messages, self.compact_at):
                 await self._maybe_compact(emit)
@@ -159,6 +174,11 @@ class Agent:
                     messages=self.messages,
                     usage=self._usage,
                 )
+            except (KeyboardInterrupt, asyncio.CancelledError):
+                final_text = "사용자가 중단했습니다."
+                emit(AgentEvent(kind="error", text=final_text, step=step))
+                stop = "cancelled"
+                break
 
             self._usage = Usage(
                 self._usage.prompt_tokens + resp.usage.prompt_tokens,
@@ -178,7 +198,15 @@ class Agent:
                 stop = "done"
                 break
 
-            guard_hit = await self._run_tool_calls(resp.message.tool_calls, step, emit)
+            try:
+                guard_hit = await self._run_tool_calls(
+                    resp.message.tool_calls, step, emit
+                )
+            except (KeyboardInterrupt, asyncio.CancelledError):
+                final_text = "사용자가 중단했습니다."
+                emit(AgentEvent(kind="error", text=final_text, step=step))
+                stop = "cancelled"
+                break
             if guard_hit:
                 final_text = (
                     "같은 도구 호출이 반복되어 중단했습니다. "
