@@ -1096,7 +1096,7 @@ stop:
         <thead><tr><th>도구</th><th>설명</th></tr></thead>
         <tbody>
           <tr><td><code>write_file</code></td><td>파일 전체 쓰기. 승인 시 diff 표시, 내용 동일하면 no-op</td></tr>
-          <tr><td><code>apply_edit</code></td><td>부분 수정. <code>search</code>를 찾아 <code>replace</code>로 교체. <code>search</code>가 빈 문자열이면 새 파일 생성</td></tr>
+          <tr><td><code>apply_edit</code></td><td>부분 수정. <code>search</code>를 찾아 <code>replace</code>로 교체. 빈 <code>search</code>=새 파일, <code>replace_all: true</code>=여러 곳 전부</td></tr>
           <tr><td><code>run_shell</code></td><td>셸 명령 실행 (Windows=PowerShell, 그 외=sh). 타임아웃 최대 600초, 종료코드 반환</td></tr>
           <tr><td><code>run_background</code></td><td>오래 도는 명령을 분리 실행하고 핸들 반환 (dev 서버 등)</td></tr>
           <tr><td><code>tail_logs</code> / <code>wait_for_log</code></td><td>백그라운드 프로세스 로그 조회 / 패턴 대기</td></tr>

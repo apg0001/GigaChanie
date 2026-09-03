@@ -138,3 +138,20 @@ def test_run_shell_타임아웃(tmp_path: Path) -> None:
     )
     assert res.is_error
     assert "시간 초과" in res.content
+
+
+def test_apply_edit_replace_all(tmp_path: Path) -> None:
+    (tmp_path / "s.py").write_text("a=3.14\nb=3.14\nc=3.14\n", encoding="utf-8")
+    res = _run(
+        "apply_edit",
+        {"path": "s.py", "search": "3.14", "replace": "PI", "replace_all": True},
+        _ctx(tmp_path),
+    )
+    assert not res.is_error
+    assert (tmp_path / "s.py").read_text(encoding="utf-8") == "a=PI\nb=PI\nc=PI\n"
+
+
+def test_apply_edit_다중매칭_replace_all_안내(tmp_path: Path) -> None:
+    (tmp_path / "s.py").write_text("x\nx\n", encoding="utf-8")
+    res = _run("apply_edit", {"path": "s.py", "search": "x", "replace": "y"}, _ctx(tmp_path))
+    assert res.is_error and "replace_all" in res.content

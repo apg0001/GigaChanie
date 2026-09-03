@@ -96,7 +96,13 @@ async def _apply_edit(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     old = target.read_text("utf-8", errors="replace") if exists else ""
 
     try:
-        result = apply_edit(old, search, replace, file_exists=exists)
+        result = apply_edit(
+            old,
+            search,
+            replace,
+            file_exists=exists,
+            replace_all=bool(args.get("replace_all", False)),
+        )
     except EditError as exc:
         return ToolResult.error(f"편집 실패 ({path}): {exc}")
 
@@ -239,6 +245,10 @@ def register_write_tools(reg: ToolRegistry) -> None:
                 "path": {"type": "string"},
                 "search": {"type": "string", "description": "교체할 기존 텍스트(정확히)"},
                 "replace": {"type": "string", "description": "새 텍스트"},
+                "replace_all": {
+                    "type": "boolean",
+                    "description": "search 가 여러 곳과 일치해도 전부 바꾼다. 기본 false",
+                },
             },
             "required": ["path", "search", "replace"],
         },

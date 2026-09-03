@@ -101,20 +101,20 @@ def test_도구없이_설명만하면_한번_더_시킨다(tmp_path: Path) -> No
     assert (tmp_path / "a.txt").read_text(encoding="utf-8") == "new"
 
 
-def test_넛지는_최대_2회(tmp_path: Path) -> None:
+def test_넛지_상한_후_종료(tmp_path: Path) -> None:
     backend = ScriptedBackend(
-        [text_response("코드를 작성하겠습니다.\n```python\nx=1\n```") for _ in range(6)]
+        [text_response("코드를 작성하겠습니다.\n```python\nx=1\n```") for _ in range(8)]
     )
     from gigachanie.loop.approval import ApprovalMode, ApprovalPolicy
 
     ctx = ToolContext(
         root=tmp_path, policy=ApprovalPolicy(mode=ApprovalMode.FULL_AUTO)
     )
-    agent = Agent(backend, build_registry(writable=True), ctx, max_steps=10)
+    agent = Agent(backend, build_registry(writable=True), ctx, max_steps=15)
     result = run_sync(agent.run("작업"))
-    # 넛지 2회 후엔 그냥 done 으로 끝난다 (무한 루프 아님)
+    # 넛지 상한 후엔 그냥 done 으로 끝난다 (무한 루프 아님)
     assert result.stop_reason == "done"
-    assert result.steps <= 4
+    assert result.steps <= 5
 
 
 def test_읽기전용이면_넛지_안함(tmp_path: Path) -> None:
@@ -168,3 +168,22 @@ def test_백엔드_오류_처리(tmp_path: Path) -> None:
     result = run_sync(agent.run("hi"))
     assert result.stop_reason == "error"
     assert "연결 끊김" in result.final_text
+
+
+def test_지어낸_tool_response_는_넛지(tmp_path: Path) -> None:
+    from gigachanie.loop.approval import ApprovalMode, ApprovalPolicy
+
+    backend = ScriptedBackend(
+        [
+            text_response("<tool_response>\n파일 내용: x=1\n</tool_response>"),
+            tool_response("write_file", {"path": "a.txt", "content": "real"}),
+            text_response("완료"),
+        ]
+    )
+    ctx = ToolContext(root=tmp_path, policy=ApprovalPolicy(mode=ApprovalMode.FULL_AUTO))
+    agent = Agent(backend, build_registry(writable=True), ctx)
+    result = run_sync(agent.run("a.txt 만들어"))
+    assert result.ok
+    assert (tmp_path / "a.txt").read_text(encoding="utf-8") == "real"
+    # 넛지 메시지가 환각용이었는지
+    assert any("지어낸" in m.content for m in result.messages if m.role == "user")

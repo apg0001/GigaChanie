@@ -50,6 +50,7 @@ class EditApplication:
     new_content: str
     method: MatchMethod
     start_line: int  # 1-indexed, 교체가 일어난 첫 행 (create 면 0)
+    replaced: int = 1  # 바뀐 위치 수 (replace_all 일 때 > 1)
 
 
 # ---------------------------------------------------------------- 블록 파싱
@@ -130,12 +131,30 @@ def _lookback_path(lines: list[str], head_idx: int) -> str | None:
 # ---------------------------------------------------------------- 적용
 
 
-def apply_edit(content: str, search: str, replace: str, *, file_exists: bool) -> EditApplication:
+def apply_edit(
+    content: str,
+    search: str,
+    replace: str,
+    *,
+    file_exists: bool,
+    replace_all: bool = False,
+) -> EditApplication:
     """content 에 search→replace 를 적용한 새 내용을 만든다.
 
     search 가 비어 있으면: 파일이 없으면 새로 만들고(replace 가 전체 내용),
     파일이 있으면 오류(전체 덮어쓰기는 write_file 을 쓰도록).
+    replace_all=True 면 search 가 여러 곳과 일치해도 전부 바꾼다.
     """
+    if replace_all and search.strip() and file_exists and search in content:
+        n = content.count(search)
+        first = content.index(search)
+        return EditApplication(
+            new_content=content.replace(search, replace),
+            method=MatchMethod.EXACT,
+            start_line=content.count("\n", 0, first) + 1,
+            replaced=n,
+        )
+
     if search.strip() == "":
         if file_exists:
             raise EditError(
@@ -187,7 +206,8 @@ def _splice_exact(content: str, search: str, replace: str) -> EditApplication | 
         return None
     if count > 1:
         raise EditError(
-            f"SEARCH 블록이 {count}곳과 일치합니다. 앞뒤 문맥을 더 포함해 유일하게 만드세요."
+            f"SEARCH 블록이 {count}곳과 일치합니다. 앞뒤 줄을 더 포함해 유일하게 "
+            "만들거나, 모두 바꾸려면 replace_all: true 를 넘기세요."
         )
     idx = content.index(search)
     new_content = content[:idx] + replace + content[idx + len(search) :]

@@ -58,12 +58,18 @@ class AgentResult:
         return self.stop_reason == "done"
 
 
-_MAX_NUDGES = 2
+_MAX_NUDGES = 3
 _NUDGE = (
     "방금 응답에서 도구를 호출하지 않았습니다. 코드나 계획을 본문에 써 놓는 것만으로는 "
     "파일이 만들어지거나 명령이 실행되지 않습니다. 하려던 작업을 실제로 수행하려면 "
     "지금 도구(write_file, apply_edit, run_shell, read_file 등)를 호출하세요. "
     "정말로 더 할 일이 없다면 '완료'라고만 답하세요."
+)
+_HALLUCINATION_NUDGE = (
+    "방금 응답에 <tool_response> 를 직접 써넣었는데, 그건 실제 도구 출력이 아니라 "
+    "당신이 지어낸 것입니다. 도구는 아직 실행되지 않았습니다. 파일을 바꾸려면 지금 "
+    "apply_edit / write_file 을 실제로 호출하세요. apply_edit 의 search 가 여러 곳과 "
+    "일치하면 앞뒤 줄을 더 포함해 유일하게 만드세요."
 )
 
 _INTENT_RE = re.compile(
@@ -71,6 +77,7 @@ _INTENT_RE = re.compile(
     r"생성하겠|수정하겠|실행하겠|시작하겠|열어보겠|확인해보겠|고치겠|작성하겠"
     r"|다음\s*단계|먼저\s|이제\s)"
 )
+_FAKE_TOOL_RE = re.compile(r"</?tool_(?:response|result|output|call)\b", re.IGNORECASE)
 
 
 def _looks_unfinished(content: str, tools: ToolRegistry) -> bool:
@@ -80,6 +87,8 @@ def _looks_unfinished(content: str, tools: ToolRegistry) -> bool:
     writing_tools = {"write_file", "apply_edit", "run_shell"} & set(tools.names())
     if not writing_tools:
         return False
+    if _FAKE_TOOL_RE.search(content):  # 도구 출력을 지어냄
+        return True
     if "```" in content:  # 코드/명령을 본문에 써 놓음
         return True
     return bool(_INTENT_RE.search(content))
@@ -228,11 +237,18 @@ class Agent:
                     resp.message.content, self.tools
                 ):
                     self._nudges += 1
-                    self.messages.append(Message.user(_NUDGE))
+                    faked = bool(_FAKE_TOOL_RE.search(resp.message.content or ""))
+                    self.messages.append(
+                        Message.user(_HALLUCINATION_NUDGE if faked else _NUDGE)
+                    )
                     emit(
                         AgentEvent(
                             kind="error",
-                            text="도구 호출 없이 설명만 함 — 실제 실행을 요청",
+                            text=(
+                                "도구 출력을 지어냄 — 실제 도구 호출 요청"
+                                if faked
+                                else "도구 호출 없이 설명만 함 — 실제 실행을 요청"
+                            ),
                             step=step,
                         )
                     )
