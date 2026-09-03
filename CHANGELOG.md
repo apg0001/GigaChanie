@@ -7,6 +7,7 @@
 
 ### 문서
 - HTML 사용 설명서 `docs/manual.html` 추가 (#26). 명령·옵션·도구·설정 레퍼런스.
+- `.github/workflows/ci.yml`(ruff·mypy·pytest 매트릭스 + 확장 컴파일) + `docs/CI레시피.md`(giga review / agent --json / eval 을 CI 잡으로 쓰는 워크플로 예제) 추가 (#35)
 
 ### 수정
 - Windows에서 Ollama가 표준 설치 경로에 있지만 현재 프로세스 `PATH`에 없을 때도
