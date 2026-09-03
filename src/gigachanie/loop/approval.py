@@ -72,6 +72,22 @@ class ApprovalPolicy:
     deny_shell: list[str] = field(default_factory=lambda: list(_DEFAULT_DENY_SHELL))
     allow_paths: list[str] = field(default_factory=list)
     deny_paths: list[str] = field(default_factory=list)
+    allow_domains: list[str] = field(default_factory=list)
+    deny_domains: list[str] = field(default_factory=list)
+
+    def domain_ok(self, host: str) -> tuple[bool, str]:
+        """(허용, 사유). deny 우선, allow_domains 있으면 화이트리스트."""
+        host = host.lower().split(":")[0]
+
+        def _m(pat: str) -> bool:
+            pat = pat.lower().lstrip("*.")
+            return host == pat or host.endswith("." + pat)
+
+        if any(_m(p) for p in self.deny_domains):
+            return False, f"거부 도메인: {host}"
+        if self.allow_domains and not any(_m(p) for p in self.allow_domains):
+            return False, f"허용 목록에 없는 도메인: {host}"
+        return True, ""
 
     def _shell_listed(self, cmd: str, patterns: list[str]) -> bool:
         return any(re.search(p, cmd.strip()) for p in patterns)
@@ -142,6 +158,8 @@ def build_policy(
     extra_deny_shell: list[str] | None = None,
     allow_paths: list[str] | None = None,
     deny_paths: list[str] | None = None,
+    allow_domains: list[str] | None = None,
+    deny_domains: list[str] | None = None,
 ) -> ApprovalPolicy:
     """내장 기본 규칙에 추가 규칙을 더해 정책을 만든다."""
     return ApprovalPolicy(
@@ -151,6 +169,8 @@ def build_policy(
         deny_shell=[*_DEFAULT_DENY_SHELL, *(extra_deny_shell or [])],
         allow_paths=list(allow_paths or []),
         deny_paths=list(deny_paths or []),
+        allow_domains=list(allow_domains or []),
+        deny_domains=list(deny_domains or []),
     )
 
 

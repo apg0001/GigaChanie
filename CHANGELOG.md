@@ -64,6 +64,8 @@
 - `giga agent --sandbox`: `run_background` 로 띄우는 프로세스도 `run_shell` 과 동일하게 격리 (#45, F4)
 - `giga agent --budget N` — 누적 토큰이 N 을 넘으면 중단(`stop_reason=budget`). Ctrl-C 로 중단하면 부분 결과를 깔끔히 반환(`stop_reason=cancelled`) (#46, A2)
 - `@경로` 참조가 존재하지 않는 파일이면 경고, 디렉터리면 파일 지정 안내. 확장자·경로 없는 평범한 단어는 무시 (#46, C10)
+- 네트워크 정책 — `permissions.yaml` 의 `allow_domains` / `deny_domains` (하위 도메인 매칭, deny 우선, allow 목록 있으면 화이트리스트). `web_fetch` 가 호스트 검사 (#47, F5)
+- 컨텍스트 예산 — 모델 컨텍스트 창의 22%를 프로젝트 컨텍스트·repo map·메모리 목차에 4:4:2 로 배분(최소치 보장), 초과분은 잘라냄 (#47, C8)
 
 ### 변경
 - `agent`/`chat` 의 `--mode` 기본값이 `suggest` 고정 → permissions.yaml 의 `mode` 값 (없으면 suggest)

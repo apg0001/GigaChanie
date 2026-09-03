@@ -1155,7 +1155,11 @@ allow_paths:
 deny_paths:
   - "config/prod/**"
 deny_shell:
-  - "^git push"</code></pre>
+  - "^git push"
+allow_domains:            <span class="c"># 있으면 화이트리스트 (web_fetch)</span>
+  - "docs.python.org"
+deny_domains:
+  - "pastebin.com"</code></pre>
       <p><code>agent</code>/<code>chat</code>의 <code>--mode</code>는 이 <code>mode</code> 값을 덮어씁니다.</p>
     </section>
 

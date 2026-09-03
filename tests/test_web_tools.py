@@ -95,6 +95,23 @@ def test_웹도구_기본_비활성() -> None:
     assert build_registry(web=True).get("web_search") is not None
 
 
+def test_도메인_화이트리스트(tmp_path: Path) -> None:
+    ctx = _ctx_with_client(tmp_path, lambda r: httpx.Response(200, text="ok"))
+    ctx.policy.deny_domains = ["evil.com"]
+    res = _run("web_fetch", {"url": "https://evil.com/x"}, ctx)
+    assert res.is_error and "거부 도메인" in res.content
+
+    res = _run("web_fetch", {"url": "https://sub.evil.com/x"}, ctx)
+    assert res.is_error  # 하위 도메인도 매칭
+
+    ctx.policy.deny_domains = []
+    ctx.policy.allow_domains = ["python.org"]
+    res = _run("web_fetch", {"url": "https://example.com/x"}, ctx)
+    assert res.is_error and "허용 목록에 없는" in res.content
+    res = _run("web_fetch", {"url": "https://docs.python.org/3/"}, ctx)
+    assert not res.is_error
+
+
 def test_network_승인_suggest모드_거부(tmp_path: Path) -> None:
     transport = httpx.MockTransport(lambda r: httpx.Response(200, text=""))
     client = httpx.AsyncClient(transport=transport)

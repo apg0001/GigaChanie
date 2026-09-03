@@ -15,7 +15,9 @@ from gigachanie.commands._pick import is_tty as _is_tty
 from gigachanie.config import Config, load_config
 from gigachanie.context import (
     MemoryStore,
+    allocate,
     build_repo_map,
+    clip,
     expand_refs,
     load_project_context,
     load_prompts,
@@ -179,6 +181,8 @@ def agent(
         extra_deny_shell=perms.deny_shell,
         allow_paths=perms.allow_paths,
         deny_paths=perms.effective_deny_paths(),
+        allow_domains=perms.allow_domains,
+        deny_domains=perms.deny_domains,
     )
     checkpoints = (
         CheckpointStore(root.resolve())
@@ -204,8 +208,13 @@ def agent(
         console.print(f"[red]디렉터리가 아닙니다: {root}[/red]")
         raise typer.Exit(code=1)
 
+    cbudget = allocate(load_config().context)
     pc = None if no_context else load_project_context(ctx.root, Path.cwd())
-    rm = None if no_map else build_repo_map(ctx.root, cwd=Path.cwd())
+    rm = (
+        None
+        if no_map
+        else build_repo_map(ctx.root, cwd=Path.cwd(), budget_chars=cbudget.map_chars)
+    )
     mem_index = "" if no_context else MemoryStore(ctx.root).index_text()
     extra_system, missing_prompts = load_prompts(ctx.root, prompts)
     for name in missing_prompts:
@@ -256,9 +265,9 @@ def agent(
         backend,
         tools,
         ctx,
-        project_context=pc.text if pc else None,
+        project_context=clip(pc.text, cbudget.project_chars) if pc else None,
         repo_map=rm.text if rm else None,
-        memory_index=mem_index or None,
+        memory_index=clip(mem_index, cbudget.memory_chars) or None,
         extra_system=extra_system or None,
         max_steps=max_steps,
         temperature=temperature,

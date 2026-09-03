@@ -19,7 +19,9 @@ from gigachanie.commands._slashfiles import load_custom_commands
 from gigachanie.config import load_config
 from gigachanie.context import (
     MemoryStore,
+    allocate,
     build_repo_map,
+    clip,
     expand_refs,
     load_project_context,
     load_prompts,
@@ -92,12 +94,20 @@ class ChatSession:
         self.max_steps = max_steps
         self.temperature = temperature
         self.use_context = use_context
+        cbudget = allocate(load_config().context)
         pc = load_project_context(root, root) if use_context else None
-        self.project_context = pc.text if pc and pc.found else None
+        self.project_context = (
+            clip(pc.text, cbudget.project_chars) if pc and pc.found else None
+        )
         self.context_sources = [p.name for p in pc.sources] if pc else []
-        rm = build_repo_map(root, cwd=root) if use_map else None
+        rm = (
+            build_repo_map(root, cwd=root, budget_chars=cbudget.map_chars)
+            if use_map
+            else None
+        )
         self.repo_map = rm.text if rm and rm.found else None
         self.map_files = len(rm.entries) if rm else 0
+        self._mem_budget = cbudget.memory_chars
         extra, missing = load_prompts(root, prompts or [])
         for name in missing:
             console.print(f"[yellow]![/yellow] 프롬프트를 찾지 못했습니다: {name}")
@@ -135,7 +145,7 @@ class ChatSession:
 
     def _refresh_memory(self) -> None:
         idx = self.memory_store.index_text() if self.use_context else ""
-        self.memory_index = idx or None
+        self.memory_index = clip(idx, self._mem_budget) or None
 
     def _new_agent(self) -> Agent:
         tools = build_registry(writable=self.writable, web=self.web)
@@ -146,6 +156,8 @@ class ChatSession:
             extra_deny_shell=self.perms.deny_shell,
             allow_paths=self.perms.allow_paths,
             deny_paths=self.perms.effective_deny_paths(),
+            allow_domains=self.perms.allow_domains,
+            deny_domains=self.perms.deny_domains,
         )
         ctx = ToolContext(
             root=self.root,
