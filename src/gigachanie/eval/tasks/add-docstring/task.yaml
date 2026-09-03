@@ -1,0 +1,6 @@
+prompt: fmt.py 의 humanize 함수에 한 줄짜리 docstring 을 추가해라. 무엇을 하는 함수인지 한국어로.
+max_steps: 8
+check:
+- type: file_contains
+  path: fmt.py
+  text: '"""'

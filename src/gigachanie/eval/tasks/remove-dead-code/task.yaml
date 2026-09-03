@@ -1,0 +1,13 @@
+prompt: svc.py 에서 아무도 호출하지 않는 _unused_helper 함수와, 쓰이지 않는 import(os, sys)를 제거해라. handler
+  는 그대로 둔다.
+max_steps: 12
+check:
+- type: file_absent_text
+  path: svc.py
+  text: _unused_helper
+- type: file_absent_text
+  path: svc.py
+  text: import os
+- type: file_contains
+  path: svc.py
+  text: def handler

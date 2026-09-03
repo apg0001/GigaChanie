@@ -29,8 +29,17 @@ def eval_cmd(
         None, "--task", "-t", help="특정 태스크만 실행 (반복 지정 가능)."
     ),
     as_json: bool = typer.Option(False, "--json", help="결과를 JSON 으로 출력."),
+    root: Path = typer.Option(
+        Path("."), "--root", "-C", help="회귀 비교 히스토리를 저장할 프로젝트 루트."
+    ),
+    no_history: bool = typer.Option(
+        False, "--no-history", help="통과율 히스토리 기록·비교를 하지 않는다."
+    ),
 ) -> None:
-    """선택된 모델로 태스크셋을 실행하고 통과율을 리포트한다."""
+    """선택된 모델로 태스크셋을 실행하고 통과율을 리포트한다.
+
+    직전 실행 대비 같은 모델의 통과율이 떨어지면 종료코드 2 (회귀 게이트).
+    """
     tdir = tasks_dir or _bundled_tasks_dir()
     if not tdir.is_dir():
         console.print(f"[red]태스크 디렉터리 없음: {tdir}[/red]")
@@ -122,4 +131,63 @@ def eval_cmd(
             f"({report.pass_rate:.0%})[/bold] · 총 편집실패 {report.total_edit_failures}"
         )
 
+    regressed = False
+    if not no_history:
+        prev = _load_last_rate(root.resolve(), backend.model)
+        _append_history(root.resolve(), backend.model, report)
+        if prev is not None and report.pass_rate + 1e-9 < prev:
+            regressed = True
+            if not as_json:
+                console.print(
+                    f"[red]회귀:[/red] 통과율 {prev:.0%} → {report.pass_rate:.0%} "
+                    f"(직전 대비 하락)"
+                )
+        elif prev is not None and not as_json:
+            arrow = "→" if report.pass_rate == prev else "↑"
+            console.print(f"[dim]직전 통과율 {prev:.0%} {arrow} {report.pass_rate:.0%}[/dim]")
+
+    if regressed:
+        raise typer.Exit(code=2)
     raise typer.Exit(code=0 if report.passed == report.total else 1)
+
+
+_HISTORY = Path(".agent") / "eval-history.jsonl"
+
+
+def _append_history(root: Path, model: str, report: EvalReport) -> None:
+    import time
+
+    path = root / _HISTORY
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(
+                json.dumps(
+                    {
+                        "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                        "model": model,
+                        "pass_rate": round(report.pass_rate, 4),
+                        "passed": report.passed,
+                        "total": report.total,
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
+    except OSError:
+        pass
+
+
+def _load_last_rate(root: Path, model: str) -> float | None:
+    path = root / _HISTORY
+    if not path.is_file():
+        return None
+    last: float | None = None
+    for line in path.read_text("utf-8", errors="replace").splitlines():
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if row.get("model") == model and "pass_rate" in row:
+            last = float(row["pass_rate"])
+    return last

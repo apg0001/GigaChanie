@@ -146,6 +146,12 @@ def _run_check(check: Check, root: Path) -> CheckResult:
     if check.type == "file_absent":
         exists = (root / check.path).exists()
         return CheckResult(check, not exists, "" if not exists else "파일이 존재함")
+    if check.type == "file_absent_text":
+        p = root / check.path
+        if not p.is_file():
+            return CheckResult(check, True, "")
+        gone = check.text not in p.read_text("utf-8", errors="replace")
+        return CheckResult(check, gone, "" if gone else f"'{check.text}' 가 남아 있음")
     if check.type == "file_present":
         exists = (root / check.path).exists()
         return CheckResult(check, exists, "" if exists else "파일 없음")

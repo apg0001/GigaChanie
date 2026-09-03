@@ -1,0 +1,9 @@
+prompt: limiter.py 의 매직 넘버 100 을 모듈 상단의 MAX_REQUESTS 상수로 빼내라. allowed 는 그 상수를 쓴다.
+max_steps: 10
+check:
+- type: file_contains
+  path: limiter.py
+  text: MAX_REQUESTS
+- type: file_contains
+  path: limiter.py
+  text: count <= MAX_REQUESTS

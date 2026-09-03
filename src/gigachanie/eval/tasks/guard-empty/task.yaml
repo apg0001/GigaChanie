@@ -1,0 +1,7 @@
+prompt: stats.py 의 mean 이 빈 리스트를 받으면 ZeroDivisionError 가 난다. 빈 리스트면 0.0 을 반환하도록 방어
+  코드를 추가해라.
+max_steps: 10
+check:
+- type: file_contains
+  path: stats.py
+  text: if not xs

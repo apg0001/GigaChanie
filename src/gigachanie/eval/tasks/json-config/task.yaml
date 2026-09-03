@@ -1,0 +1,12 @@
+prompt: config.py 파일을 새로 만들어라. load_config(path) 함수가 주어진 JSON 파일을 읽어 dict 로 반환하고,
+  파일이 없으면 빈 dict 를 반환해야 한다.
+max_steps: 12
+check:
+- type: file_present
+  path: config.py
+- type: file_contains
+  path: config.py
+  text: def load_config
+- type: file_contains
+  path: config.py
+  text: json
