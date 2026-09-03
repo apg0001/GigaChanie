@@ -86,3 +86,37 @@ def test_parse_prompt_toolcalls_없음() -> None:
     calls, cleaned = parse_prompt_toolcalls("그냥 최종 답변입니다.")
     assert calls == []
     assert cleaned == "그냥 최종 답변입니다."
+
+
+def test_펜스없는_bare_json_복구() -> None:
+    # qwen2.5-coder 가 네이티브 툴콜 대신 본문에 그냥 JSON 을 뱉는 경우
+    known = {"web_search", "read_file"}
+    content = '{"name": "web_search", "arguments": {"query": "임대운 교수"}}'
+    calls, cleaned = parse_prompt_toolcalls(content, known)
+    assert len(calls) == 1
+    assert calls[0].name == "web_search"
+    assert calls[0].arguments == {"query": "임대운 교수"}
+    assert cleaned == ""
+
+
+def test_bare_json_known_아니면_무시() -> None:
+    content = '{"name": "not_a_tool", "arguments": {}}'
+    calls, cleaned = parse_prompt_toolcalls(content, {"web_search"})
+    assert calls == [] and cleaned == content
+
+
+def test_bare_json_parameters_키_및_tool_calls_래핑() -> None:
+    known = {"run_shell"}
+    c1 = '{"tool": "run_shell", "parameters": {"command": "ls"}}'
+    calls, _ = parse_prompt_toolcalls(c1, known)
+    assert calls[0].name == "run_shell" and calls[0].arguments == {"command": "ls"}
+
+    c2 = '{"tool_calls": [{"name": "run_shell", "arguments": {"command": "pwd"}}]}'
+    calls, _ = parse_prompt_toolcalls(c2, known)
+    assert calls[0].arguments == {"command": "pwd"}
+
+
+def test_known_없으면_bare_json_은_답변으로() -> None:
+    content = '{"name": "x", "arguments": {}}'
+    calls, cleaned = parse_prompt_toolcalls(content)
+    assert calls == [] and cleaned == content

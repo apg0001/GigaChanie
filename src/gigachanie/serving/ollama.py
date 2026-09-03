@@ -182,8 +182,9 @@ class OllamaBackend:
         content = "".join(parts)
         calls = normalize_native(raw_calls)
         cleaned = content
-        if not calls and tools and self.tool_mode == "prompt":
-            calls, cleaned = parse_prompt_toolcalls(content)
+        if not calls and tools:
+            known = {t.name for t in tools}
+            calls, cleaned = parse_prompt_toolcalls(content, known)
         return ChatResponse(
             message=Message.assistant(cleaned, calls),
             finish_reason=_finish(last, bool(calls)),
@@ -201,8 +202,9 @@ class OllamaBackend:
         content = msg.get("content") or ""
         calls: list[ToolCall] = normalize_native(msg.get("tool_calls"))
         cleaned = content
-        if not calls and tools and self.tool_mode == "prompt":
-            calls, cleaned = parse_prompt_toolcalls(content)
+        if not calls and tools:
+            known = {t.name for t in tools}
+            calls, cleaned = parse_prompt_toolcalls(content, known)
         return ChatResponse(
             message=Message.assistant(cleaned, calls),
             finish_reason=_finish(data, bool(calls)),
