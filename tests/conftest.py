@@ -34,8 +34,10 @@ class ScriptedBackend:
         temperature: float = 0.0,
         max_tokens: int | None = None,
         stream_cb: StreamCallback | None = None,
+        reasoning: str | None = None,
     ) -> ChatResponse:
         self.received.append(list(messages))
+        self.last_reasoning = reasoning
         if not self._responses:
             return text_response("(대본 소진)")
         resp = self._responses.pop(0)

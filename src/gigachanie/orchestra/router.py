@@ -205,6 +205,7 @@ class RouterBackend(Backend):
         temperature: float = 0.0,
         max_tokens: int | None = None,
         stream_cb: StreamCallback | None = None,
+        reasoning: str | None = None,
     ) -> ChatResponse:
         backend = self._ensure(messages)
         return await backend.chat(
@@ -213,6 +214,7 @@ class RouterBackend(Backend):
             temperature=temperature,
             max_tokens=max_tokens,
             stream_cb=stream_cb,
+            reasoning=reasoning,
         )
 
     async def health(self) -> tuple[bool, str]:

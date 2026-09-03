@@ -210,6 +210,7 @@ def agent(
     think_extra = think_directive(think, think_hard)
     if think_extra:
         extra_system = f"{extra_system}\n\n{think_extra}".strip()
+    reasoning = "high" if think_hard else ("low" if think else None)
     exp = expand_refs(task_text, ctx.root)
     task_text = exp.text
     task_images = exp.images
@@ -258,6 +259,7 @@ def agent(
         extra_system=extra_system or None,
         max_steps=max_steps,
         temperature=temperature,
+        reasoning=reasoning,
         compact_at=resolved_compact,
     )
     register_subagent_tool(

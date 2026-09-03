@@ -86,6 +86,7 @@ class OllamaBackend:
         temperature: float,
         max_tokens: int | None,
         stream: bool,
+        reasoning: str | None = None,
     ) -> dict[str, Any]:
         wire = [_message_to_wire(m) for m in messages]
 
@@ -109,6 +110,9 @@ class OllamaBackend:
             "keep_alive": self.keep_alive,
             "options": options,
         }
+        if reasoning:
+            # Ollama /api/chat 의 think: bool (gpt-oss 계열은 "low"/"medium"/"high")
+            payload["think"] = reasoning if reasoning in ("low", "medium", "high") else True
         if tools and self.tool_mode == "native":
             payload["tools"] = [t.to_openai() for t in tools]
         return payload
@@ -121,9 +125,12 @@ class OllamaBackend:
         temperature: float = 0.0,
         max_tokens: int | None = None,
         stream_cb: StreamCallback | None = None,
+        reasoning: str | None = None,
     ) -> ChatResponse:
         stream = stream_cb is not None
-        payload = self._build_payload(messages, tools, temperature, max_tokens, stream)
+        payload = self._build_payload(
+            messages, tools, temperature, max_tokens, stream, reasoning
+        )
         try:
             if stream:
                 return await self._chat_streaming(payload, stream_cb, tools)

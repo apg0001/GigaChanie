@@ -77,6 +77,7 @@ class Agent:
         extra_system: str | None = None,
         max_steps: int = 20,
         temperature: float = 0.0,
+        reasoning: str | None = None,
         max_tokens: int | None = None,
         history: Sequence[Message] | None = None,
         repeat_limit: int = 3,
@@ -93,6 +94,7 @@ class Agent:
         )
         self.max_steps = max_steps
         self.temperature = temperature
+        self.reasoning = reasoning
         self.max_tokens = max_tokens
         self.repeat_limit = repeat_limit
         self.compact_at = compact_at
@@ -144,6 +146,7 @@ class Agent:
                     temperature=self.temperature,
                     max_tokens=self.max_tokens,
                     stream_cb=_delta,
+                    reasoning=self.reasoning,
                 )
             except BackendError as exc:
                 emit(AgentEvent(kind="error", text=str(exc), is_error=True, step=step))

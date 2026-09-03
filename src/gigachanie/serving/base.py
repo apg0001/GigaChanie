@@ -124,6 +124,7 @@ class Backend(Protocol):
         temperature: float = 0.0,
         max_tokens: int | None = None,
         stream_cb: StreamCallback | None = None,
+        reasoning: str | None = None,
     ) -> ChatResponse: ...
 
     async def health(self) -> tuple[bool, str]:
