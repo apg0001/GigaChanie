@@ -160,10 +160,18 @@ class Agent:
         if self.ctx.checkpoints is not None:
             self.ctx.checkpoints.open_turn(user_input)
 
-        stop: StopReason = "max_steps"
-        final_text = ""
         self._usage = Usage()  # 이 run() 동안의 사용량
         self._nudges = 0
+        try:
+            return await self._run_loop(emit)
+        finally:
+            # 취소 예외(에디터의 _Cancelled 등)로 빠져나가도 턴은 닫는다.
+            if self.ctx.checkpoints is not None:
+                self.ctx.checkpoints.close_turn()
+
+    async def _run_loop(self, emit: EventHandler) -> AgentResult:
+        stop: StopReason = "max_steps"
+        final_text = ""
         step = 0
 
         for step in range(1, self.max_steps + 1):
@@ -204,8 +212,6 @@ class Agent:
                 )
             except BackendError as exc:
                 emit(AgentEvent(kind="error", text=str(exc), is_error=True, step=step))
-                if self.ctx.checkpoints is not None:
-                    self.ctx.checkpoints.close_turn()
                 return AgentResult(
                     final_text=str(exc),
                     stop_reason="error",
@@ -274,9 +280,6 @@ class Agent:
             final_text = (
                 f"최대 스텝({self.max_steps})에 도달했습니다. 작업이 완료되지 않았을 수 있습니다."
             )
-
-        if self.ctx.checkpoints is not None:
-            self.ctx.checkpoints.close_turn()
 
         emit(AgentEvent(kind="done", text=final_text))
         return AgentResult(
