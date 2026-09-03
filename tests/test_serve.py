@@ -309,6 +309,53 @@ def test_session_new_prompts_think(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
     assert backend.last_reasoning == "high"
 
 
+def test_프롬프트_후_세션_저장_및_재개(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from gigachanie.session import SessionStore
+
+    srv = _mk(monkeypatch, ScriptedBackend([text_response("첫 답변")]))
+    srv.dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "session/new",
+            "params": {"root": str(tmp_path)},
+        }
+    )
+    res1 = _replies(srv)[1]["result"]
+    sid, store_id = res1["sessionId"], res1["storeId"]
+    assert store_id
+    srv.dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "session/prompt",
+            "params": {"sessionId": sid, "text": "처음 질문"},
+        }
+    )
+    srv._sessions[sid].worker.join(timeout=10)  # type: ignore[union-attr]
+
+    saved = SessionStore(tmp_path).load(store_id)
+    assert saved is not None
+    assert saved.title == "처음 질문"
+    assert any(m.content == "처음 질문" for m in saved.messages)
+
+    # 새 세션에서 resume 하면 이전 대화가 이어진다
+    srv2 = _mk(monkeypatch, ScriptedBackend([text_response("이어서")]))
+    srv2.dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "session/new",
+            "params": {"root": str(tmp_path), "resume": store_id},
+        }
+    )
+    r = _replies(srv2)[1]["result"]
+    assert r["resumedTurns"] == 1
+    assert r["storeId"] == store_id
+
+
 def test_session_history(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from gigachanie.serving.base import Message
     from gigachanie.session import SessionData, SessionStore

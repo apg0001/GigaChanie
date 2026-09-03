@@ -68,6 +68,8 @@ class _Session:
     mode: str = "suggest"
     agent: Agent | None = None
     hooks: Any = None
+    store_id: str = ""  # 디스크에 저장·재개되는 대화 id (session.id 와 별개)
+    title: str = ""
     cancel: threading.Event = field(default_factory=threading.Event)
     approvals: dict[str, queue.Queue[str]] = field(default_factory=dict)
     asks: dict[str, queue.Queue[str]] = field(default_factory=dict)
@@ -333,9 +335,30 @@ class RpcServer:
         )
         return agent
 
+    def _persist_session(self, sess: _Session) -> None:
+        """대화를 디스크에 저장해 나중에 resume 할 수 있게 한다."""
+        if sess.agent is None or not sess.store_id:
+            return
+        msgs = sess.agent.messages
+        if len(msgs) <= 1:  # 시스템 프롬프트뿐이면 저장 안 함
+            return
+        from gigachanie.session import SessionData, SessionStore
+
+        first_user = next((m.content for m in msgs if m.role == "user"), "")
+        with contextlib.suppress(Exception):
+            SessionStore(sess.root).save(
+                SessionData(
+                    id=sess.store_id,
+                    title=sess.title or first_user[:60],
+                    model_id=getattr(sess.backend, "model", ""),
+                    messages=list(msgs),
+                )
+            )
+
     def _close_session(self, sess: _Session) -> None:
         sess.cancel.set()
         sess.release_waiters()
+        self._persist_session(sess)
         if sess.hooks is not None:
             with contextlib.suppress(Exception):
                 sess.hooks.fire("stop")
@@ -397,20 +420,23 @@ class RpcServer:
             think_hard=think_hard,
             budget=budget,
         )
+        from gigachanie.session import SessionStore
+
         resumed_turns = 0
         if resume_id:
-            from gigachanie.session import SessionStore
-
             data = SessionStore(root).load(resume_id)
             if data is not None and len(data.messages) > 1:
                 sess.agent.messages = [sess.agent.messages[0], *data.messages[1:]]
                 resumed_turns = sum(1 for m in data.messages if m.role == "user")
+                sess.title = data.title
+        sess.store_id = resume_id or SessionStore.new_id()
         if sess.hooks is not None:
             with contextlib.suppress(Exception):
                 sess.hooks.fire("session_start")
         self._sessions[sess.id] = sess
         return {
             "sessionId": sess.id,
+            "storeId": sess.store_id,
             "model": getattr(backend, "model", ""),
             "tools": sess.agent.tools.names(),
             "mode": mode.value,
@@ -492,6 +518,7 @@ class RpcServer:
                 )
                 changed = git_changed_files(sess.root)
                 runlog.finish(result, changed_files=changed)
+                self._persist_session(sess)
                 self._reply(mid, _result_dict(result, changed))
             except _Cancelled:
                 self._reply(
