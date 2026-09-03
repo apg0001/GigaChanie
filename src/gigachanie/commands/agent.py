@@ -109,6 +109,9 @@ def agent(
         False, "--yolo", help="full-auto + write. 확인 없이 전부 실행(주의)."
     ),
     max_steps: int = typer.Option(20, "--max-steps", help="최대 반복 스텝."),
+    budget: int = typer.Option(
+        0, "--budget", help="누적 토큰이 이 값을 넘으면 중단 (0=제한 없음)."
+    ),
     temperature: float = typer.Option(0.0, "--temperature", "-t"),
     no_context: bool = typer.Option(
         False, "--no-context", help="AGENTS.md 등 프로젝트 컨텍스트 파일을 읽지 않는다."
@@ -260,6 +263,7 @@ def agent(
         max_steps=max_steps,
         temperature=temperature,
         reasoning=reasoning,
+        token_budget=budget or None,
         compact_at=resolved_compact,
     )
     register_subagent_tool(

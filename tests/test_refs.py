@@ -38,6 +38,20 @@ def test_없는_파일은_무시(tmp_path: Path) -> None:
     assert tfiles == [] and out == "@nope.py 어디감"
 
 
+def test_없는_파일_참조는_경고(tmp_path: Path) -> None:
+    r = expand_refs("@src/gone.py 를 봐줘", tmp_path)
+    assert any("찾을 수 없" in n for n in r.notes)
+    # 확장자·경로 없는 평범한 단어는 조용히 무시
+    r2 = expand_refs("@mention 님", tmp_path)
+    assert r2.notes == []
+
+
+def test_디렉터리_참조는_경고(tmp_path: Path) -> None:
+    (tmp_path / "src").mkdir()
+    r = expand_refs("@src 를 봐줘", tmp_path)
+    assert any("디렉터리" in n for n in r.notes)
+
+
 def test_루트_밖_경로_차단(tmp_path: Path) -> None:
     inside = tmp_path / "inside"
     inside.mkdir()
