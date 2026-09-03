@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 import uuid
@@ -20,15 +21,60 @@ from typing import Any
 
 from gigachanie.serving.base import ToolCall
 
-_TOOL_BLOCK_RE = re.compile(
-    r"```(?:tool|tool_call|json)?\s*\n(?P<body>\{.*?\})\s*\n```",
-    re.DOTALL,
-)
+# 명시적 도구 펜스: ```tool / ```tool_call (name 검증 없이 받는다)
+_TOOL_FENCE_RE = re.compile(r"```(?:tool|tool_call)\s*\n(?P<body>.*?)```", re.DOTALL)
 # <tool_call> ... </tool_call> (일부 모델의 습관)
-_TOOL_TAG_RE = re.compile(
-    r"<tool_call>\s*(?P<body>\{.*?\})\s*</tool_call>",
-    re.DOTALL,
-)
+_TOOL_TAG_RE = re.compile(r"<tool_call>\s*(?P<body>.*?)\s*</tool_call>", re.DOTALL)
+# 빈 코드펜스 정리용
+_EMPTY_FENCE_RE = re.compile(r"```[^\n`]*\n\s*```")
+
+
+def extract_all_json_spans(text: str) -> list[tuple[Any, int, int]]:
+    """문자열에서 최상위 균형 JSON 객체/배열을 (값, 시작, 끝) 목록으로."""
+    out: list[tuple[Any, int, int]] = []
+    i = 0
+    n = len(text)
+    while i < n:
+        ch = text[i]
+        if ch not in "{[":
+            i += 1
+            continue
+        opener = ch
+        closer = "}" if opener == "{" else "]"
+        depth = 0
+        in_str = False
+        esc = False
+        j = i
+        matched = False
+        while j < n:
+            c = text[j]
+            if in_str:
+                if esc:
+                    esc = False
+                elif c == "\\":
+                    esc = True
+                elif c == '"':
+                    in_str = False
+            elif c == '"':
+                in_str = True
+            elif c == opener:
+                depth += 1
+            elif c == closer:
+                depth -= 1
+                if depth == 0:
+                    with contextlib.suppress(json.JSONDecodeError):
+                        out.append((json.loads(text[i : j + 1]), i, j + 1))
+                    i = j + 1
+                    matched = True
+                    break
+            j += 1
+        if not matched:
+            i += 1
+    return out
+
+
+def extract_all_json(text: str) -> list[Any]:
+    return [v for v, _, _ in extract_all_json_spans(text)]
 
 
 def _new_id() -> str:
@@ -132,65 +178,77 @@ def _obj_to_call(obj: Any, known: set[str] | None) -> ToolCall | None:
     return ToolCall(id=_new_id(), name=name, arguments=_coerce_arguments(args))
 
 
+def _calls_from_objs(objs: list[Any], known: set[str] | None) -> list[ToolCall]:
+    """JSON 값 목록에서 ToolCall 을 뽑는다. {"tool_calls":[...]} 래핑도 푼다."""
+    out: list[ToolCall] = []
+    for o in objs:
+        if isinstance(o, dict):
+            inner = o.get("tool_calls") or o.get("tool_call")
+            if isinstance(inner, list):
+                out.extend(c for c in (_obj_to_call(x, known) for x in inner) if c)
+                continue
+            if isinstance(inner, dict):
+                c = _obj_to_call(inner, known)
+                if c:
+                    out.append(c)
+                continue
+        if isinstance(o, list):
+            out.extend(c for c in (_obj_to_call(x, known) for x in o) if c)
+            continue
+        c = _obj_to_call(o, known)
+        if c:
+            out.append(c)
+    return out
+
+
 def parse_prompt_toolcalls(
     content: str, known: set[str] | None = None
 ) -> tuple[list[ToolCall], str]:
     """본문에서 도구 호출을 추출한다.
 
-    - ```tool``` 코드블록 / `<tool_call>` 태그
-    - `known` 이 주어지면, 본문이 통째로(또는 앞부분이) `{"name": <도구>, ...}`
-      JSON 인 경우도 인식 (네이티브 툴콜에 실패하고 본문에 JSON 을 뱉는 모델 대응)
+    - 임의 언어의 코드펜스(```sh, ```json, ```tool …) / `<tool_call>` 태그 안의
+      `{"name": <도구>, "arguments": {...}}` JSON (한 블록에 여러 개도 허용)
+    - `known` 이 주어지면 펜스 없이 본문에 직접 쓴 JSON 도 인식
+      (네이티브 툴콜에 실패하고 본문에 JSON 을 뱉는 모델 대응)
 
     반환: (도구 호출 목록, 블록을 제거한 나머지 본문)
     """
     calls: list[ToolCall] = []
     spans: list[tuple[int, int]] = []
 
-    for regex in (_TOOL_BLOCK_RE, _TOOL_TAG_RE):
+    # 1) 명시적 도구 마커: ```tool / ```tool_call / <tool_call> — name 검증 없이.
+    for regex in (_TOOL_FENCE_RE, _TOOL_TAG_RE):
         for m in regex.finditer(content):
-            body = m.group("body")
-            try:
-                obj = json.loads(body)
-            except json.JSONDecodeError:
-                obj = extract_first_json(body)
-            call = _obj_to_call(obj, None)
-            if call is not None:
-                calls.append(call)
+            found = _calls_from_objs(extract_all_json(m.group("body")), None)
+            if found:
+                calls.extend(found)
                 spans.append((m.start(), m.end()))
 
-    if spans:
-        spans.sort()
-        cleaned_parts: list[str] = []
-        cursor = 0
-        for s, e in spans:
-            cleaned_parts.append(content[cursor:s])
-            cursor = e
-        cleaned_parts.append(content[cursor:])
-        return calls, "".join(cleaned_parts).strip()
-
-    # 펜스 없이 본문에 바로 JSON 을 뱉은 경우 (known 필요)
+    # 2) 그 외: 본문 어디든(다른 언어의 펜스 포함) known 도구 이름과 일치하는
+    #    JSON 객체를 회수. 네이티브 툴콜 실패 후 본문에 JSON 을 뱉는 모델 대응.
     if known:
-        stripped = content.strip()
-        obj = extract_first_json(stripped)
-        recovered: list[ToolCall] = []
-        if isinstance(obj, list):
-            recovered = [c for c in (_obj_to_call(o, known) for o in obj) if c]
-        elif isinstance(obj, dict):
-            inner = obj.get("tool_calls") or obj.get("tool_call")
-            if isinstance(inner, list):
-                recovered = [c for c in (_obj_to_call(o, known) for o in inner) if c]
-            elif isinstance(inner, dict):
-                one = _obj_to_call(inner, known)
-                recovered = [one] if one else []
-            else:
-                one = _obj_to_call(obj, known)
-                recovered = [one] if one else []
-        if recovered:
-            # 본문이 사실상 JSON 뿐이면 통째로 제거
-            leftover = "" if stripped.startswith(("{", "[")) else content
-            return recovered, leftover.strip()
+        for obj, s, e in extract_all_json_spans(content):
+            if any(a <= s and e <= b for a, b in spans):
+                continue
+            found = _calls_from_objs([obj], known)
+            if found:
+                calls.extend(found)
+                spans.append((s, e))
 
-    return [], content
+    if not spans:
+        return [], content
+
+    spans.sort()
+    cleaned_parts: list[str] = []
+    cursor = 0
+    for s, e in spans:
+        if s < cursor:
+            continue
+        cleaned_parts.append(content[cursor:s])
+        cursor = e
+    cleaned_parts.append(content[cursor:])
+    cleaned = _EMPTY_FENCE_RE.sub("", "".join(cleaned_parts))
+    return calls, cleaned.strip()
 
 
 def render_prompt_tool_docs(tools: list[dict[str, Any]] | list[Any]) -> str:

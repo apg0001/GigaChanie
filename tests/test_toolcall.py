@@ -120,3 +120,31 @@ def test_known_없으면_bare_json_은_답변으로() -> None:
     content = '{"name": "x", "arguments": {}}'
     calls, cleaned = parse_prompt_toolcalls(content)
     assert calls == [] and cleaned == content
+
+
+def test_sh_펜스_여러_툴콜_qwen스타일() -> None:
+    # qwen2.5-coder:7b 가 실제로 뱉는 형태: ```sh 펜스에 JSON 여러 개
+    known = {"write_file", "apply_edit", "run_shell", "list_dir"}
+    content = (
+        "프로젝트를 진행합니다.\n\n"
+        "```sh\n"
+        '{"name": "write_file", "arguments": {"path": "a/__init__.py", "content": ""}}\n'
+        '{"name": "write_file", "arguments": {"path": "a/core.py", "content": "x = 1"}}\n'
+        "```\n\n"
+        "이제 테스트합니다.\n"
+        "```sh\n"
+        '{"name": "run_shell", "arguments": {"command": "python -m pytest -q"}}\n'
+        "```\n"
+    )
+    calls, cleaned = parse_prompt_toolcalls(content, known)
+    assert [c.name for c in calls] == ["write_file", "write_file", "run_shell"]
+    assert calls[1].arguments == {"path": "a/core.py", "content": "x = 1"}
+    assert "write_file" not in cleaned and "run_shell" not in cleaned
+    assert "프로젝트를 진행합니다" in cleaned
+
+
+def test_python_펜스_예시코드는_안건드림() -> None:
+    known = {"write_file", "run_shell"}
+    content = "사용 예:\n```python\nresult = compute(x)\nprint(result)\n```\n끝입니다."
+    calls, cleaned = parse_prompt_toolcalls(content, known)
+    assert calls == [] and cleaned == content
