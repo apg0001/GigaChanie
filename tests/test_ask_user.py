@@ -55,6 +55,19 @@ def test_question_필수(tmp_path: Path) -> None:
         _run({"options": ["a"]}, ToolContext(root=tmp_path))
 
 
+def test_ask_user_연속_호출은_차단된다(tmp_path: Path) -> None:
+    # 사용자가 매번 답해도, 모델이 계속 ask_user 만 부르면 3번째부터 막는다
+    ctx = ToolContext(root=tmp_path, ask_user=lambda *_a: "답")
+    backend = ScriptedBackend(
+        [tool_response("ask_user", {"question": f"q{i}"}, call_id=f"c{i}") for i in range(6)]
+        + [text_response("진행")]
+    )
+    agent = Agent(backend, default_readonly_registry(), ctx, max_steps=10)
+    result = run_sync(agent.run("해줘"))
+    tool_msgs = [m for m in result.messages if m.role == "tool"]
+    assert any("연달아" in m.content for m in tool_msgs)
+
+
 def test_에이전트_루프에서_질문_후_진행(tmp_path: Path) -> None:
     answers = iter(["옵션 B"])
     ctx = ToolContext(root=tmp_path, ask_user=lambda *_a: next(answers))
