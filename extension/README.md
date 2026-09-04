@@ -29,16 +29,21 @@ VS Code 에서 이 폴더를 열고 F5 (Extension Development Host) 로 실행�
 
 ## 기능 (v0.0.1)
 
-- 활동 표시줄의 **GigaChanie** 뷰에서 대화형으로 에이전트 실행
-- 에이전트 이벤트(도구 호출/결과/최종 답변) 실시간 스트리밍
+- **사이드바 뷰 또는 에디터 탭** — 활동 표시줄의 **GigaChanie** 뷰, 또는
+  `GigaChanie: 채팅 탭 열기`(`Ctrl+Alt+G` / macOS `Cmd+Alt+G`)로 에디터 탭을 열어
+  다른 편집기 그룹으로 끌어 오른쪽에 둘 수 있습니다. 두 화면은 같은 대화·세션을 공유합니다.
+- **채팅 헤더에서 즉시 전환** — 모델(설치 여부·장비 적합도 표시, "이 세션만" / "기본값으로 저장"),
+  승인 모드(suggest/auto-edit/full-auto), `write`, `web`. 설정 JSON 을 열 필요 없음.
+- 에이전트 이벤트(도구 호출/결과/최종 답변) 실시간 스트리밍, 셸 출력은 나오는 대로 표시
 - `suggest` 모드에서 쓰기/셸 실행 시 뷰 안에서 **허용/거부** 승인
 - `ask_user` 명확화 질문은 QuickPick(+직접 입력)으로 응답
 - 상태 표시줄에 모델·승인 모드·실행 상태 표시
 - 답변에 나온 변경 파일을 클릭하면 에디터에서 열림, `(diff)` 로 HEAD 대비 변경 확인
 - 입력창에서 `@` 뒤에 파일명을 치면 워크스페이스 파일 자동완성 (↑↓/Tab)
-- `GigaChanie: 이전 세션 이어가기` — 저장된 대화를 골라 이어감
-- 명령: `새 세션`, `작업 실행…`, `실행 취소`, `이전 세션 이어가기`, `브리지 재시작`
-- 설정: `gigachanie.command`, `gigachanie.mode`, `gigachanie.write`,
+- `GigaChanie: 이전 세션 이어가기` — 저장된 대화를 골라 이어감 (확장/CLI 대화 모두)
+- 명령: `채팅 탭 열기`, `새 세션`, `작업 실행…`, `모델 선택`, `실행 취소`,
+  `이전 세션 이어가기`, `브리지 재시작`
+- 설정: `gigachanie.command`, `gigachanie.model`, `gigachanie.mode`, `gigachanie.write`,
   `gigachanie.web`, `gigachanie.maxSteps`, `gigachanie.prompts`, `gigachanie.think`
 
 ## 프로토콜
@@ -48,15 +53,17 @@ VS Code 에서 이 폴더를 열고 F5 (Extension Development Host) 로 실행�
 | 메서드 | 방향 | 설명 |
 | --- | --- | --- |
 | `initialize` | → | 버전/프로토콜/cwd |
-| `session/new` | → | `{root, write, web, mode, maxSteps, prompts, think, thinkHard, budget, resume}` → `{sessionId, storeId, model, tools, mode, resumedTurns}` (대화는 `storeId` 로 자동 저장·재개) |
+| `session/new` | → | `{root, write, web, mode, model?, maxSteps, prompts, think, thinkHard, budget, resume}` → `{sessionId, storeId, model, tools, mode, web, writable, resumedTurns}` (대화는 `storeId` 로 자동 저장·재개, `model` 로 세션별 모델 지정) |
 | `session/info` | → | 현재 모델·모드·도구·실행 여부·턴 수 |
 | `session/history` | → | 저장된 세션 목록 (id·제목·모델·턴) |
+| `models/list` | → | `{current, backend, models:[{id, display, params, installed, fit, …}]}` |
+| `models/use` | → | `{model}` — 사용자 설정에 기본 모델로 저장 |
 | `session/prompt` | → | `{sessionId, text}` → `{ok, finalText, stopReason, steps, tokens, changedFiles}` |
 | `session/cancel` | → | 실행 중인 프롬프트 취소 |
 | `session/approve` | → | `{sessionId, requestId, decision}` (allow/deny/always) |
 | `session/answer` | → | `{sessionId, requestId, answer}` — `ask_user` 질문 응답 |
 | `session/close` | → | 세션 종료 |
 | `shutdown` | → | 브리지 종료 |
-| `session/event` | ← | AgentEvent 스트림 `{kind, text, toolName, isError, step}` |
+| `session/event` | ← | AgentEvent 스트림 `{kind, text, toolName, isError, step}` (`kind` 에 `tool_output` = 셸 등의 실시간 부분 출력) |
 | `session/approval` | ← | `{requestId, kind, summary, detail, path}` |
 | `session/ask` | ← | `{requestId, question, options, allowCustom}` |

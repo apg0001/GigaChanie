@@ -393,13 +393,19 @@ class RpcServer:
         think_hard = bool(params.get("thinkHard", False))
         budget = int(params.get("budget", 0) or 0)
         resume_id = str(params.get("resume", "") or "")
+        model_override = str(params.get("model", "") or "")
         perms = load_permissions(root)
         try:
             mode = ApprovalMode.parse(str(params.get("mode") or perms.mode or "suggest"))
         except ValueError as exc:
             raise RpcError(-32602, str(exc)) from None
         try:
-            backend = build_backend(root=root)
+            if model_override:
+                from gigachanie.serving.factory import build_model_backend
+
+                backend = build_model_backend(model_override)
+            else:
+                backend = build_backend(root=root)
         except BackendError as exc:
             raise RpcError(-32000, str(exc)) from None
 
@@ -441,6 +447,7 @@ class RpcServer:
             "tools": sess.agent.tools.names(),
             "mode": mode.value,
             "writable": writable,
+            "web": web,
             "root": str(root),
             "resumedTurns": resumed_turns,
         }
@@ -461,6 +468,64 @@ class RpcServer:
             for d in SessionStore(root).list()
         ]
         return {"sessions": items}
+
+    def _m_models_list(self, params: dict[str, Any], mid: Any) -> dict[str, Any]:
+        """레지스트리 모델 + 설치 여부 + 이 장비 적합도. 확장의 모델 피커용."""
+        from gigachanie.config import load_config
+        from gigachanie.providers.registry import default_registry
+
+        cfg = load_config()
+        reg = default_registry()
+
+        installed: set[str] = set()
+        with contextlib.suppress(Exception):
+            import httpx
+
+            r = httpx.get("http://127.0.0.1:11434/api/tags", timeout=2.0)
+            if r.status_code == 200:
+                installed = {m.get("name", "") for m in r.json().get("models", [])}
+
+        fit_map: dict[str, str] = {}
+        with contextlib.suppress(Exception):
+            from gigachanie.providers.hardware import detect_hardware
+            from gigachanie.providers.recommend import recommend_models
+
+            hw = detect_hardware()
+            for rec in recommend_models(hw, include_unfittable=True):
+                fit_map[rec.model.id] = rec.fit.label
+
+        def _is_installed(tag: str | None) -> bool:
+            if not tag:
+                return False
+            # "qwen2.5-coder:7b" 는 "qwen2.5-coder:7b" / "...:7b-instruct-q4_K_M" 등과 매칭.
+            # 파라미터 수까지 같아야 하므로 base 만으로는 매칭하지 않는다.
+            return any(n == tag or n.startswith(tag + "-") for n in installed)
+
+        models = [
+            {
+                "id": m.id,
+                "display": m.display,
+                "family": m.family,
+                "kind": m.kind,
+                "params": f"{m.params_b:.0f}B",
+                "toolCalling": m.tool_calling,
+                "installed": _is_installed(getattr(m, "ollama_tag", None)),
+                "fit": fit_map.get(m.id, ""),
+            }
+            for m in reg.models
+        ]
+        return {"current": cfg.model_id or "", "backend": cfg.backend, "models": models}
+
+    def _m_models_use(self, params: dict[str, Any], mid: Any) -> dict[str, Any]:
+        """선택 모델을 사용자 설정에 기본값으로 저장한다 (giga chat 등과 공유)."""
+        from gigachanie.config import load_config, save_user_config
+
+        model_id = str(params.get("model", "") or "")
+        if not model_id:
+            raise RpcError(-32602, "model 이 필요합니다.")
+        cfg = load_config().merged(model_id=model_id)
+        path = save_user_config(cfg)
+        return {"ok": True, "model": model_id, "path": str(path)}
 
     def _m_session_info(self, params: dict[str, Any], mid: Any) -> dict[str, Any]:
         sess = self._require(params)
@@ -580,4 +645,6 @@ RpcServer._METHODS = {
     "session/approve": RpcServer._m_session_approve,
     "session/answer": RpcServer._m_session_answer,
     "session/close": RpcServer._m_session_close,
+    "models/list": RpcServer._m_models_list,
+    "models/use": RpcServer._m_models_use,
 }

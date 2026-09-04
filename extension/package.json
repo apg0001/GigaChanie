@@ -45,6 +45,11 @@
     },
     "commands": [
       {
+        "command": "gigachanie.openChat",
+        "title": "GigaChanie: 채팅 탭 열기",
+        "icon": "$(comment-discussion)"
+      },
+      {
         "command": "gigachanie.newSession",
         "title": "GigaChanie: 새 세션",
         "icon": "$(add)"
@@ -52,6 +57,10 @@
       {
         "command": "gigachanie.ask",
         "title": "GigaChanie: 작업 실행…"
+      },
+      {
+        "command": "gigachanie.pickModel",
+        "title": "GigaChanie: 모델 선택"
       },
       {
         "command": "gigachanie.cancel",
@@ -71,22 +80,34 @@
     "menus": {
       "view/title": [
         {
+          "command": "gigachanie.openChat",
+          "when": "view == gigachanie.chat",
+          "group": "navigation@0"
+        },
+        {
           "command": "gigachanie.newSession",
           "when": "view == gigachanie.chat",
-          "group": "navigation"
+          "group": "navigation@1"
         },
         {
           "command": "gigachanie.resume",
           "when": "view == gigachanie.chat",
-          "group": "navigation"
+          "group": "navigation@2"
         },
         {
           "command": "gigachanie.cancel",
           "when": "view == gigachanie.chat",
-          "group": "navigation"
+          "group": "navigation@3"
         }
       ]
     },
+    "keybindings": [
+      {
+        "command": "gigachanie.openChat",
+        "key": "ctrl+alt+g",
+        "mac": "cmd+alt+g"
+      }
+    ],
     "configuration": {
       "title": "GigaChanie",
       "properties": {
@@ -103,7 +124,12 @@
             "full-auto"
           ],
           "default": "suggest",
-          "description": "승인 모드. suggest=모든 쓰기/실행 확인, auto-edit=파일 쓰기 자동, full-auto=전부 자동."
+          "description": "승인 모드. suggest=모든 쓰기/실행 확인, auto-edit=파일 쓰기 자동, full-auto=전부 자동. 채팅 헤더에서도 바꿀 수 있습니다."
+        },
+        "gigachanie.model": {
+          "type": "string",
+          "default": "",
+          "description": "이 워크스페이스에서 쓸 모델 ID. 비우면 `giga model use` 로 저장된 기본 모델을 씁니다. 채팅 헤더의 모델 버튼으로 바꿀 수 있습니다."
         },
         "gigachanie.write": {
           "type": "boolean",
