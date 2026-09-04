@@ -2,52 +2,75 @@ import * as vscode from "vscode";
 import { GigaClient } from "./rpc";
 
 export function activate(context: vscode.ExtensionContext): void {
-  const provider = new ChatViewProvider(context);
+  const controller = new ChatController(context);
+  const sidebar = new SidebarProvider(controller);
 
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(ChatViewProvider.viewId, provider),
-    vscode.commands.registerCommand("gigachanie.newSession", () => provider.newSession()),
-    vscode.commands.registerCommand("gigachanie.ask", () => provider.ask()),
-    vscode.commands.registerCommand("gigachanie.cancel", () => provider.cancel()),
-    vscode.commands.registerCommand("gigachanie.restart", () => provider.restart()),
-    vscode.commands.registerCommand("gigachanie.resume", () => provider.resumeSession()),
+    vscode.window.registerWebviewViewProvider(SidebarProvider.viewId, sidebar, {
+      webviewOptions: { retainContextWhenHidden: true },
+    }),
+    vscode.commands.registerCommand("gigachanie.openChat", () => controller.openPanel()),
+    vscode.commands.registerCommand("gigachanie.newSession", () => controller.newSession()),
+    vscode.commands.registerCommand("gigachanie.ask", () => controller.ask()),
+    vscode.commands.registerCommand("gigachanie.cancel", () => controller.cancel()),
+    vscode.commands.registerCommand("gigachanie.restart", () => controller.restart()),
+    vscode.commands.registerCommand("gigachanie.resume", () => controller.resumeSession()),
+    vscode.commands.registerCommand("gigachanie.pickModel", () => controller.pickModel()),
   );
 }
 
 export function deactivate(): void {
-  /* 클라이언트는 ChatViewProvider.dispose 에서 정리 */
+  /* 클라이언트는 ChatController.dispose 에서 정리 */
 }
 
 type OutMsg =
   | { type: "user"; text: string }
   | { type: "event"; kind: string; text?: string; toolName?: string; isError?: boolean }
   | { type: "final"; ok: boolean; stopReason: string; text: string; steps: number; total: number; changed: string[] }
-  | { type: "approval"; requestId: string; kind: string; summary: string; detail: string }
+  | { type: "approval"; requestId: string; kind: string; summary: string; detail: string; decided?: string }
   | { type: "status"; text: string; busy: boolean }
+  | { type: "settings"; model: string; mode: string; write: boolean; web: boolean }
   | { type: "completions"; frag: string; items: string[] }
   | { type: "clear" };
 
-class ChatViewProvider implements vscode.WebviewViewProvider {
-  static readonly viewId = "gigachanie.chat";
+const REPLAYABLE = new Set(["user", "event", "final", "approval"]);
+const HISTORY_CAP = 400;
 
-  private view: vscode.WebviewView | null = null;
+/**
+ * 하나의 대화 상태(브리지·세션·기록)를 들고, 붙어 있는 모든 웹뷰(사이드바 뷰 +
+ * 에디터 탭 패널)에 같은 내용을 뿌린다. 어느 웹뷰에서 입력해도 같은 컨트롤러로 들어온다.
+ */
+class ChatController {
   private client: GigaClient | null = null;
   private sessionId: string | null = null;
+  private pendingResume: string | null = null;
   private busy = false;
   private model = "";
   private mode = "";
+  private web = false;
+  private write = true;
+  private readonly history: OutMsg[] = [];
+  private readonly surfaces = new Set<vscode.Webview>();
+  private panel: vscode.WebviewPanel | null = null;
   private readonly output: vscode.OutputChannel;
   private readonly status: vscode.StatusBarItem;
 
   constructor(context: vscode.ExtensionContext) {
     this.output = vscode.window.createOutputChannel("GigaChanie");
     this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
-    this.status.command = "gigachanie.chat.focus";
+    this.status.command = "gigachanie.openChat";
+    this.write = this.cfg().get<boolean>("write", true);
+    this.web = this.cfg().get<boolean>("web", false);
+    this.mode = this.cfg().get<string>("mode", "suggest");
     this.updateStatus();
     this.status.show();
     context.subscriptions.push(this.output, this.status, {
       dispose: () => this.client?.stop(),
     });
+  }
+
+  private cfg(): vscode.WorkspaceConfiguration {
+    return vscode.workspace.getConfiguration("gigachanie");
   }
 
   private updateStatus(): void {
@@ -56,70 +79,203 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
     this.status.tooltip = this.busy ? "실행 중…" : "GigaChanie 채팅 열기";
   }
 
-  resolveWebviewView(view: vscode.WebviewView): void {
-    this.view = view;
-    view.webview.options = { enableScripts: true };
-    view.webview.html = this.html(view.webview);
-    view.webview.onDidReceiveMessage((m) => this.onWebviewMessage(m));
+  // ---------------------------------------------------------------- 웹뷰 부착
+
+  html(webview: vscode.Webview): string {
+    return renderHtml(webview);
+  }
+
+  attach(webview: vscode.Webview): void {
+    this.surfaces.add(webview);
+    webview.onDidReceiveMessage((m) => this.onWebviewMessage(m));
+    // 새로 붙은 웹뷰를 현재 상태로 채운다
+    webview.postMessage({ type: "clear" } as OutMsg);
+    for (const msg of this.history) {
+      webview.postMessage(msg);
+    }
+    webview.postMessage(this.settingsSnapshot());
+    webview.postMessage({
+      type: "status",
+      text: this.busy ? "실행 중…" : this.sessionId ? "대기" : "새 세션",
+      busy: this.busy,
+    } as OutMsg);
+  }
+
+  detach(webview: vscode.Webview): void {
+    this.surfaces.delete(webview);
+  }
+
+  openPanel(): void {
+    if (this.panel) {
+      this.panel.reveal(vscode.ViewColumn.Beside);
+      return;
+    }
+    const panel = vscode.window.createWebviewPanel(
+      "gigachanie.chatTab",
+      "GigaChanie",
+      { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false },
+      { enableScripts: true, retainContextWhenHidden: true },
+    );
+    panel.webview.html = this.html(panel.webview);
+    this.attach(panel.webview);
+    panel.onDidDispose(() => {
+      this.detach(panel.webview);
+      this.panel = null;
+    });
+    this.panel = panel;
   }
 
   private post(msg: OutMsg): void {
-    this.view?.webview.postMessage(msg);
+    if (REPLAYABLE.has(msg.type)) {
+      this.history.push(msg);
+      if (this.history.length > HISTORY_CAP) {
+        this.history.splice(0, this.history.length - HISTORY_CAP);
+      }
+    }
+    if (msg.type === "clear") {
+      this.history.length = 0;
+    }
+    for (const w of this.surfaces) {
+      void w.postMessage(msg);
+    }
   }
+
+  private settingsSnapshot(): OutMsg {
+    return { type: "settings", model: this.model, mode: this.mode, write: this.write, web: this.web };
+  }
+
+  private focusChat(): void {
+    if (this.panel) {
+      this.panel.reveal(this.panel.viewColumn ?? vscode.ViewColumn.Beside, true);
+    } else {
+      void vscode.commands.executeCommand("gigachanie.chat.focus");
+    }
+  }
+
+  // ---------------------------------------------------------------- 입력 처리
 
   private onWebviewMessage(m: any): void {
-    if (m?.type === "submit" && typeof m.text === "string") {
-      void this.submit(m.text.trim());
-    } else if (m?.type === "approve" && typeof m.requestId === "string") {
-      this.respondApproval(m.requestId, m.decision);
-    } else if (m?.type === "cancel") {
-      void this.cancel();
-    } else if (m?.type === "openFile" && typeof m.path === "string") {
-      void this.openFile(m.path, m.diff === true);
-    } else if (m?.type === "complete" && typeof m.frag === "string") {
-      void this.completeFiles(m.frag);
+    switch (m?.type) {
+      case "submit":
+        if (typeof m.text === "string") void this.submit(m.text.trim());
+        break;
+      case "approve":
+        if (typeof m.requestId === "string") this.respondApproval(m.requestId, m.decision);
+        break;
+      case "cancel":
+        void this.cancel();
+        break;
+      case "openFile":
+        if (typeof m.path === "string") void this.openFile(m.path, m.diff === true);
+        break;
+      case "complete":
+        if (typeof m.frag === "string") void this.completeFiles(m.frag);
+        break;
+      case "setMode":
+        void this.applySettings({ mode: String(m.value) });
+        break;
+      case "setWrite":
+        void this.applySettings({ write: !!m.value });
+        break;
+      case "setWeb":
+        void this.applySettings({ web: !!m.value });
+        break;
+      case "pickModel":
+        void this.pickModel();
+        break;
+      case "newSession":
+        void this.newSession();
+        break;
+      case "resume":
+        void this.resumeSession();
+        break;
+      case "openSettings":
+        void vscode.commands.executeCommand("workbench.action.openSettings", "gigachanie");
+        break;
     }
   }
 
-  private async openFile(rel: string, diff: boolean): Promise<void> {
+  // ---------------------------------------------------------------- 설정 변경
+
+  private async applySettings(next: { mode?: string; write?: boolean; web?: boolean; model?: string }): Promise<void> {
+    const cfg = this.cfg();
+    const target = vscode.workspace.workspaceFolders?.length
+      ? vscode.ConfigurationTarget.Workspace
+      : vscode.ConfigurationTarget.Global;
+    if (next.mode !== undefined && next.mode !== this.mode) {
+      this.mode = next.mode;
+      await cfg.update("mode", next.mode, target);
+    }
+    if (next.write !== undefined && next.write !== this.write) {
+      this.write = next.write;
+      await cfg.update("write", next.write, target);
+    }
+    if (next.web !== undefined && next.web !== this.web) {
+      this.web = next.web;
+      await cfg.update("web", next.web, target);
+    }
+    if (next.model !== undefined && next.model !== this.model) {
+      this.model = next.model;
+      await cfg.update("model", next.model, target);
+    }
+    // 진행 중이 아니면 세션을 새로 열어 바뀐 설정을 즉시 반영
+    if (!this.busy) {
+      await this.closeSession();
+      this.post({ type: "status", text: "설정 변경됨 · 새 세션", busy: false });
+    } else {
+      this.post({ type: "status", text: "설정 변경됨 · 다음 세션부터 적용", busy: true });
+    }
+    this.post(this.settingsSnapshot());
+  }
+
+  async pickModel(): Promise<void> {
     const root = this.workspaceRoot();
     if (!root) {
+      vscode.window.showErrorMessage("워크스페이스 폴더를 먼저 열어주세요.");
       return;
     }
-    const uri = vscode.Uri.joinPath(vscode.Uri.file(root), rel);
+    let models: any[] = [];
+    let current = this.model;
     try {
-      if (diff) {
-        await vscode.commands.executeCommand("git.openChange", uri);
-      } else {
-        await vscode.window.showTextDocument(uri, { preview: false });
-      }
+      const client = this.ensureClient(root);
+      const r = await client.request<{ current: string; models: any[] }>("models/list", {});
+      models = r.models ?? [];
+      current = r.current || current;
     } catch (err: any) {
-      this.output.appendLine(`파일 열기 실패 (${rel}): ${err?.message ?? err}`);
+      vscode.window.showErrorMessage(`모델 목록을 불러오지 못했습니다: ${err?.message ?? err}`);
+      return;
     }
+    const items: (vscode.QuickPickItem & { id: string })[] = models.map((m) => ({
+      label: (m.installed ? "$(check) " : "$(cloud-download) ") + m.id,
+      description: [m.params, m.fit, m.installed ? "" : "미설치"].filter(Boolean).join(" · "),
+      detail: m.display,
+      id: m.id,
+      picked: m.id === current,
+    }));
+    const pick = await vscode.window.showQuickPick(items, {
+      title: "GigaChanie 모델 선택",
+      placeHolder: "$(check) 설치됨 · $(cloud-download) 첫 사용 시 자동 다운로드",
+    });
+    if (!pick) {
+      return;
+    }
+    const asDefault = await vscode.window.showQuickPick(["이 세션만", "기본값으로 저장 (giga chat 등과 공유)"], {
+      title: `모델: ${pick.id}`,
+    });
+    if (!asDefault) {
+      return;
+    }
+    if (asDefault.startsWith("기본값")) {
+      try {
+        await this.ensureClient(this.workspaceRoot()!).request("models/use", { model: pick.id });
+      } catch (err: any) {
+        this.output.appendLine(`기본 모델 저장 실패: ${err?.message ?? err}`);
+      }
+    }
+    await this.applySettings({ model: pick.id });
   }
 
-  private async completeFiles(frag: string): Promise<void> {
-    const clean = frag.replace(/[^\w./\-가-힣]/g, "");
-    const pattern = clean ? `**/*${clean}*` : "**/*";
-    let uris: vscode.Uri[] = [];
-    try {
-      uris = await vscode.workspace.findFiles(
-        pattern,
-        "**/{node_modules,.git,out,dist,build,.venv}/**",
-        30,
-      );
-    } catch {
-      /* ignore */
-    }
-    const root = this.workspaceRoot() ?? "";
-    const items = uris
-      .map((u) => vscode.workspace.asRelativePath(u, false))
-      .filter((p) => root === "" || !p.startsWith(".."))
-      .sort();
-    this.post({ type: "completions", frag, items });
-  }
-
-  // ------------------------------------------------------------------ 연결
+  // ---------------------------------------------------------------- 연결/세션
 
   private workspaceRoot(): string | null {
     return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? null;
@@ -129,7 +285,7 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
     if (this.client && this.client.running) {
       return this.client;
     }
-    const cmd = vscode.workspace.getConfiguration("gigachanie").get<string>("command", "giga");
+    const cmd = this.cfg().get<string>("command", "giga");
     const client = new GigaClient(cmd, root);
     client.on("log", (line: string) => this.output.appendLine(line));
     client.on("error", (err: Error) => {
@@ -206,21 +362,26 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private pendingResume: string | null = null;
-
   private async ensureSession(client: GigaClient, root: string): Promise<string> {
     if (this.sessionId) {
       return this.sessionId;
     }
-    const cfg = vscode.workspace.getConfiguration("gigachanie");
+    const cfg = this.cfg();
     const think = cfg.get<string>("think", "off");
+    const model = cfg.get<string>("model", "");
     const res = await client.request<{
-      sessionId: string; model: string; mode: string; resumedTurns?: number;
+      sessionId: string;
+      model: string;
+      mode: string;
+      web?: boolean;
+      writable?: boolean;
+      resumedTurns?: number;
     }>("session/new", {
       root,
-      write: cfg.get<boolean>("write", true),
-      web: cfg.get<boolean>("web", false),
-      mode: cfg.get<string>("mode", "suggest"),
+      write: this.write,
+      web: this.web,
+      mode: this.mode,
+      model: model || undefined,
       maxSteps: cfg.get<number>("maxSteps", 20),
       prompts: cfg.get<string[]>("prompts", []),
       think: think === "think",
@@ -231,10 +392,24 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
     this.sessionId = res.sessionId;
     this.model = res.model;
     this.mode = res.mode;
+    if (typeof res.web === "boolean") this.web = res.web;
+    if (typeof res.writable === "boolean") this.write = res.writable;
     this.updateStatus();
+    this.post(this.settingsSnapshot());
     const rt = res.resumedTurns ? ` · ${res.resumedTurns}턴 이어감` : "";
     this.post({ type: "status", text: `세션 시작 · ${res.model} · ${res.mode}${rt}`, busy: false });
     return res.sessionId;
+  }
+
+  private async closeSession(): Promise<void> {
+    if (this.client && this.sessionId) {
+      try {
+        await this.client.request("session/close", { sessionId: this.sessionId });
+      } catch {
+        /* ignore */
+      }
+    }
+    this.sessionId = null;
   }
 
   async resumeSession(): Promise<void> {
@@ -267,20 +442,14 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
     if (!pick) {
       return;
     }
-    if (this.client && this.sessionId) {
-      try {
-        await this.client.request("session/close", { sessionId: this.sessionId });
-      } catch {
-        /* ignore */
-      }
-    }
-    this.sessionId = null;
+    await this.closeSession();
     this.pendingResume = pick.id;
     this.post({ type: "clear" });
     this.post({ type: "status", text: `"${pick.label}" 이어감 (다음 메시지부터)`, busy: false });
+    this.focusChat();
   }
 
-  // ------------------------------------------------------------------ 동작
+  // ---------------------------------------------------------------- 동작
 
   private setBusy(busy: boolean): void {
     this.busy = busy;
@@ -327,6 +496,12 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
     if (!this.client || !this.sessionId) {
       return;
     }
+    // 기록에서 해당 승인 항목을 '결정됨' 으로 바꿔, 나중에 붙는 웹뷰엔 버튼 대신 결과가 보이게
+    for (const msg of this.history) {
+      if (msg.type === "approval" && msg.requestId === requestId) {
+        msg.decided = decision;
+      }
+    }
     try {
       this.client.notify("session/approve", { sessionId: this.sessionId, requestId, decision });
     } catch (err: any) {
@@ -345,16 +520,10 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   async newSession(): Promise<void> {
-    if (this.client && this.sessionId) {
-      try {
-        await this.client.request("session/close", { sessionId: this.sessionId });
-      } catch {
-        /* ignore */
-      }
-    }
-    this.sessionId = null;
+    await this.closeSession();
     this.post({ type: "clear" });
     this.post({ type: "status", text: "새 세션", busy: false });
+    this.post(this.settingsSnapshot());
   }
 
   async ask(): Promise<void> {
@@ -363,7 +532,7 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
       placeHolder: "예: 이 파일의 버그를 찾아서 고쳐줘",
     });
     if (text) {
-      await vscode.commands.executeCommand("gigachanie.chat.focus");
+      this.focusChat();
       void this.submit(text.trim());
     }
   }
@@ -376,12 +545,63 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
     vscode.window.showInformationMessage("GigaChanie 브리지를 재시작했습니다.");
   }
 
-  // ------------------------------------------------------------------ HTML
+  private async openFile(rel: string, diff: boolean): Promise<void> {
+    const root = this.workspaceRoot();
+    if (!root) {
+      return;
+    }
+    const uri = vscode.Uri.joinPath(vscode.Uri.file(root), rel);
+    try {
+      if (diff) {
+        await vscode.commands.executeCommand("git.openChange", uri);
+      } else {
+        await vscode.window.showTextDocument(uri, { preview: false });
+      }
+    } catch (err: any) {
+      this.output.appendLine(`파일 열기 실패 (${rel}): ${err?.message ?? err}`);
+    }
+  }
 
-  private html(webview: vscode.Webview): string {
-    const nonce = String(Math.random()).slice(2);
-    const csp = `default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';`;
-    return `<!DOCTYPE html>
+  private async completeFiles(frag: string): Promise<void> {
+    const clean = frag.replace(/[^\w./\-가-힣]/g, "");
+    const pattern = clean ? `**/*${clean}*` : "**/*";
+    let uris: vscode.Uri[] = [];
+    try {
+      uris = await vscode.workspace.findFiles(
+        pattern,
+        "**/{node_modules,.git,out,dist,build,.venv}/**",
+        30,
+      );
+    } catch {
+      /* ignore */
+    }
+    const root = this.workspaceRoot() ?? "";
+    const items = uris
+      .map((u) => vscode.workspace.asRelativePath(u, false))
+      .filter((p) => root === "" || !p.startsWith(".."))
+      .sort();
+    this.post({ type: "completions", frag, items });
+  }
+}
+
+class SidebarProvider implements vscode.WebviewViewProvider {
+  static readonly viewId = "gigachanie.chat";
+  constructor(private readonly controller: ChatController) {}
+
+  resolveWebviewView(view: vscode.WebviewView): void {
+    view.webview.options = { enableScripts: true };
+    view.webview.html = this.controller.html(view.webview);
+    this.controller.attach(view.webview);
+    view.onDidDispose(() => this.controller.detach(view.webview));
+  }
+}
+
+// -------------------------------------------------------------------- HTML
+
+function renderHtml(webview: vscode.Webview): string {
+  const nonce = String(Math.random()).slice(2);
+  const csp = `default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';`;
+  return `<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
@@ -390,6 +610,17 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
   :root { color-scheme: light dark; }
   body { margin: 0; font-family: var(--vscode-font-family); font-size: var(--vscode-font-size);
     color: var(--vscode-foreground); display: flex; flex-direction: column; height: 100vh; }
+  #head { display: flex; align-items: center; gap: 4px; padding: 5px 6px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--vscode-panel-border); }
+  #head select, #head button { font-family: inherit; font-size: 0.85em; }
+  #head select { background: var(--vscode-dropdown-background); color: var(--vscode-dropdown-foreground);
+    border: 1px solid var(--vscode-dropdown-border); border-radius: 4px; padding: 2px 4px; }
+  .chip { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground);
+    border: none; border-radius: 4px; padding: 3px 8px; cursor: pointer; }
+  .chip.on { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+  #model { max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #head .spacer { flex: 1; }
+  #head .icon { padding: 3px 6px; }
   #log { flex: 1; overflow-y: auto; padding: 10px; }
   .msg { margin: 8px 0; padding: 8px 10px; border-radius: 6px; white-space: pre-wrap; word-break: break-word; }
   .user { background: var(--vscode-textBlockQuote-background); border-left: 3px solid var(--vscode-focusBorder); }
@@ -424,6 +655,20 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
 </style>
 </head>
 <body>
+  <div id="head">
+    <button id="model" class="chip" title="모델 선택">모델…</button>
+    <select id="mode" title="승인 모드">
+      <option value="suggest">suggest</option>
+      <option value="auto-edit">auto-edit</option>
+      <option value="full-auto">full-auto</option>
+    </select>
+    <button id="write" class="chip" title="파일 쓰기/실행 도구">write</button>
+    <button id="web" class="chip" title="웹 검색/가져오기 도구">web</button>
+    <span class="spacer"></span>
+    <button id="new" class="chip icon" title="새 세션">＋</button>
+    <button id="resume" class="chip icon" title="이전 세션 이어가기">↺</button>
+    <button id="gear" class="chip icon" title="전체 설정">⚙</button>
+  </div>
   <div id="log"></div>
   <div id="status">대기</div>
   <div id="bar">
@@ -438,7 +683,29 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
   const log = document.getElementById('log');
   const input = document.getElementById('input');
   const statusEl = document.getElementById('status');
+  const modelBtn = document.getElementById('model');
+  const modeSel = document.getElementById('mode');
+  const writeBtn = document.getElementById('write');
+  const webBtn = document.getElementById('web');
   let current = null;
+
+  modelBtn.addEventListener('click', () => vscode.postMessage({ type: 'pickModel' }));
+  modeSel.addEventListener('change', () => vscode.postMessage({ type: 'setMode', value: modeSel.value }));
+  writeBtn.addEventListener('click', () =>
+    vscode.postMessage({ type: 'setWrite', value: !writeBtn.classList.contains('on') }));
+  webBtn.addEventListener('click', () =>
+    vscode.postMessage({ type: 'setWeb', value: !webBtn.classList.contains('on') }));
+  document.getElementById('new').addEventListener('click', () => vscode.postMessage({ type: 'newSession' }));
+  document.getElementById('resume').addEventListener('click', () => vscode.postMessage({ type: 'resume' }));
+  document.getElementById('gear').addEventListener('click', () => vscode.postMessage({ type: 'openSettings' }));
+
+  function applySettings(m) {
+    modelBtn.textContent = m.model || '모델…';
+    modelBtn.title = '모델: ' + (m.model || '(미설정)');
+    modeSel.value = m.mode || 'suggest';
+    writeBtn.classList.toggle('on', !!m.write);
+    webBtn.classList.toggle('on', !!m.web);
+  }
 
   function add(cls, text) {
     const d = document.createElement('div');
@@ -525,9 +792,37 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
   });
   input.addEventListener('blur', () => setTimeout(hideAc, 120));
 
+  function renderApproval(m) {
+    const d = document.createElement('div');
+    d.className = 'msg approval';
+    const h = document.createElement('div');
+    h.textContent = '승인 필요 (' + m.kind + '): ' + m.summary;
+    d.appendChild(h);
+    if (m.detail) { const pre = document.createElement('pre'); pre.textContent = m.detail; d.appendChild(pre); }
+    if (m.decided) {
+      const s = document.createElement('div');
+      s.className = 'meta';
+      s.textContent = m.decided === 'deny' ? '→ 거부됨' : '→ 허용됨';
+      d.appendChild(s);
+    } else {
+      const allow = document.createElement('button');
+      allow.textContent = '허용';
+      const deny = document.createElement('button');
+      deny.textContent = '거부'; deny.className = 'secondary';
+      const done = (decision) => { allow.disabled = deny.disabled = true;
+        vscode.postMessage({ type: 'approve', requestId: m.requestId, decision }); };
+      allow.addEventListener('click', () => done('allow'));
+      deny.addEventListener('click', () => done('deny'));
+      d.appendChild(allow); d.appendChild(deny);
+    }
+    log.appendChild(d);
+    log.scrollTop = log.scrollHeight;
+  }
+
   window.addEventListener('message', (ev) => {
     const m = ev.data;
-    if (m.type === 'clear') { log.innerHTML = ''; current = null; }
+    if (m.type === 'clear') { log.innerHTML = ''; current = null; tasksEl = null; }
+    else if (m.type === 'settings') { applySettings(m); }
     else if (m.type === 'user') { add('user', m.text); current = null; }
     else if (m.type === 'status') { statusEl.textContent = m.text; }
     else if (m.type === 'completions') {
@@ -545,9 +840,15 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
         if (m.toolName === 'update_tasks') { current = null; return; }
         add('tool', '→ ' + (m.toolName || 'tool')); current = null;
       }
+      else if (m.kind === 'tool_output') {
+        if (!current || !current.classList.contains('tool')) { current = add('tool', ''); }
+        current.textContent += m.text || '';
+        log.scrollTop = log.scrollHeight;
+      }
       else if (m.kind === 'tool_result') {
         if (m.toolName === 'update_tasks' && !m.isError) { renderTasks(m.text || ''); return; }
         add('tool' + (m.isError ? ' err' : ''), (m.text || '').slice(0, 2000));
+        current = null;
       }
       else if (m.kind === 'compact') { add('tool', m.text || '대화 압축'); }
       else if (m.kind === 'error') { add('tool err', m.text || '오류'); }
@@ -569,38 +870,19 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
           a.addEventListener('click', (e) => { e.preventDefault();
             vscode.postMessage({ type: 'openFile', path: p }); });
           files.appendChild(a);
-          const d = document.createElement('a');
-          d.href = '#'; d.textContent = ' (diff)';
-          d.addEventListener('click', (e) => { e.preventDefault();
+          const dl = document.createElement('a');
+          dl.href = '#'; dl.textContent = ' (diff)';
+          dl.addEventListener('click', (e) => { e.preventDefault();
             vscode.postMessage({ type: 'openFile', path: p, diff: true }); });
-          files.appendChild(d);
+          files.appendChild(dl);
         });
         d.appendChild(files);
       }
       current = null;
     }
-    else if (m.type === 'approval') {
-      const d = document.createElement('div');
-      d.className = 'msg approval';
-      const h = document.createElement('div');
-      h.textContent = '승인 필요 (' + m.kind + '): ' + m.summary;
-      d.appendChild(h);
-      if (m.detail) { const pre = document.createElement('pre'); pre.textContent = m.detail; d.appendChild(pre); }
-      const allow = document.createElement('button');
-      allow.textContent = '허용';
-      const deny = document.createElement('button');
-      deny.textContent = '거부'; deny.className = 'secondary';
-      const done = (decision) => { allow.disabled = deny.disabled = true;
-        vscode.postMessage({ type: 'approve', requestId: m.requestId, decision }); };
-      allow.addEventListener('click', () => done('allow'));
-      deny.addEventListener('click', () => done('deny'));
-      d.appendChild(allow); d.appendChild(deny);
-      log.appendChild(d);
-      log.scrollTop = log.scrollHeight;
-    }
+    else if (m.type === 'approval') { renderApproval(m); }
   });
 </script>
 </body>
 </html>`;
-  }
 }

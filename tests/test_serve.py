@@ -356,6 +356,45 @@ def test_프롬프트_후_세션_저장_및_재개(
     assert r["storeId"] == store_id
 
 
+def test_models_list(monkeypatch: pytest.MonkeyPatch) -> None:
+    srv = _mk(monkeypatch, ScriptedBackend([]))
+    srv.dispatch(
+        {"jsonrpc": "2.0", "id": 1, "method": "models/list", "params": {}}
+    )
+    res = _replies(srv)[1]["result"]
+    assert "models" in res and isinstance(res["models"], list) and res["models"]
+    m = res["models"][0]
+    assert {"id", "display", "installed", "fit"} <= set(m)
+
+
+def test_session_new_모델_오버라이드(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    captured: dict = {}
+
+    def fake_build_model_backend(model_id: str, **kw):
+        captured["model"] = model_id
+        b = ScriptedBackend([text_response("ok")])
+        b.model = model_id  # type: ignore[attr-defined]
+        return b
+
+    monkeypatch.setattr(
+        "gigachanie.serving.factory.build_model_backend", fake_build_model_backend
+    )
+    srv = _mk(monkeypatch, ScriptedBackend([]))
+    srv.dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "session/new",
+            "params": {"root": str(tmp_path), "model": "llama-3.1-8b-instruct"},
+        }
+    )
+    res = _replies(srv)[1]["result"]
+    assert captured["model"] == "llama-3.1-8b-instruct"
+    assert res["model"] == "llama-3.1-8b-instruct"
+
+
 def test_session_history(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from gigachanie.serving.base import Message
     from gigachanie.session import SessionData, SessionStore
