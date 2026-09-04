@@ -93,11 +93,22 @@ def test_run_shell_샌드박스_주입(tmp_path: Path, monkeypatch) -> None:
     async def fake_exec(*argv, **kw):
         captured["argv"] = list(argv)
 
+        class _Stdout:
+            def __init__(self) -> None:
+                self._sent = False
+
+            async def read(self, _n: int) -> bytes:
+                if self._sent:
+                    return b""
+                self._sent = True
+                return b"ok"
+
         class P:
             returncode = 0
+            stdout = _Stdout()
 
-            async def communicate(self):
-                return (b"ok", b"")
+            async def wait(self):
+                return 0
 
         return P()
 

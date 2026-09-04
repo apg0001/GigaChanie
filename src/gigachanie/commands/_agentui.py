@@ -140,6 +140,7 @@ class _Printer:
 
     def __init__(self) -> None:
         self._streaming = False
+        self._tool_streamed = False
         self.answered = False
 
     def __call__(self, ev: AgentEvent) -> None:
@@ -167,9 +168,29 @@ class _Printer:
                 return
             args = ", ".join(f"{k}={v!r}" for k, v in ev.tool_args.items())
             console.print(f"[cyan]→ {ev.tool_name}[/cyan]({args})")
+        elif ev.kind == "tool_output":
+            console.print(
+                f"[dim]{ev.text}[/dim]", end="", markup=False, soft_wrap=True
+            )
+            self._tool_streamed = True
         elif ev.kind == "tool_result":
             if ev.tool_name == "update_tasks" and not ev.is_error:
                 _print_tasks(ev.text)
+                return
+            if self._tool_streamed:
+                # 이미 실시간으로 흘려보냈으니 종료줄만 보여준다
+                self._tool_streamed = False
+                tail = next(
+                    (ln for ln in ev.text.splitlines() if ln.startswith("[종료코드")),
+                    "",
+                )
+                if not ev.text.endswith("\n"):
+                    console.print()
+                if tail:
+                    console.print(
+                        f"[{'red' if ev.is_error else 'green'}]{tail}[/]",
+                        markup=False,
+                    )
                 return
             style = "red" if ev.is_error else "green"
             preview = ev.text if len(ev.text) <= 800 else ev.text[:800] + " …"

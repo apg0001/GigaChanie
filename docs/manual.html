@@ -1055,7 +1055,7 @@ stop:
               <tr><td><code>session/approve</code></td><td><code>{sessionId, requestId, decision}</code> — allow / deny / always</td></tr>
               <tr><td><code>session/answer</code></td><td><code>{sessionId, requestId, answer}</code> — <code>ask_user</code> 질문에 답</td></tr>
               <tr><td><code>session/close</code> · <code>shutdown</code></td><td>세션 종료(<code>stop</code> 훅) · 브리지 종료</td></tr>
-              <tr><td>← <code>session/event</code></td><td>AgentEvent 스트림 <code>{kind, text, toolName, isError, step}</code></td></tr>
+              <tr><td>← <code>session/event</code></td><td>AgentEvent 스트림 <code>{kind, text, toolName, isError, step}</code>. <code>kind</code> 에 <code>tool_output</code>(셸 등 도구의 실시간 부분 출력) 포함</td></tr>
               <tr><td>← <code>session/approval</code></td><td><code>{requestId, kind, summary, detail, path}</code> — 승인 요청</td></tr>
               <tr><td>← <code>session/ask</code></td><td><code>{requestId, question, options, allowCustom}</code> — 명확화 질문</td></tr>
             </tbody>
@@ -1097,7 +1097,7 @@ stop:
         <tbody>
           <tr><td><code>write_file</code></td><td>파일 전체 쓰기. 승인 시 diff 표시, 내용 동일하면 no-op</td></tr>
           <tr><td><code>apply_edit</code></td><td>부분 수정. <code>search</code>를 찾아 <code>replace</code>로 교체. 빈 <code>search</code>=새 파일, <code>replace_all: true</code>=여러 곳 전부</td></tr>
-          <tr><td><code>run_shell</code></td><td>셸 명령 실행 (Windows=PowerShell, 그 외=sh). 타임아웃 최대 600초, 종료코드 반환</td></tr>
+          <tr><td><code>run_shell</code></td><td>셸 명령 실행 (Windows=PowerShell, 그 외=sh). 타임아웃 최대 600초, 종료코드 반환. 출력은 나오는 대로 실시간 표시(<code>tool_output</code> 이벤트)되고 타임아웃돼도 그때까지 출력이 결과에 남음. Windows 자식은 UTF-8 로 강제</td></tr>
           <tr><td><code>run_background</code></td><td>오래 도는 명령을 분리 실행하고 핸들 반환 (dev 서버 등)</td></tr>
           <tr><td><code>tail_logs</code> / <code>wait_for_log</code></td><td>백그라운드 프로세스 로그 조회 / 패턴 대기</td></tr>
           <tr><td><code>stop_process</code> / <code>list_processes</code></td><td>백그라운드 프로세스 종료 / 목록</td></tr>

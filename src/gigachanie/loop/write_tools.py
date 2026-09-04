@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import asyncio
+import codecs
 import difflib
 import os
 from typing import Any
@@ -141,11 +142,26 @@ async def _apply_edit(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
 
 def _shell_argv(cmd: str) -> list[str]:
     if os.name == "nt":
-        # PowerShell 은 네이티브 명령의 종료코드를 자기 종료코드로 전파하지 않으므로
-        # 마지막에 명시적으로 exit 를 붙인다.
-        wrapped = f"{cmd}\nif ($LASTEXITCODE -ne $null) {{ exit $LASTEXITCODE }}"
+        # - 자식 출력을 UTF-8 로 받도록 콘솔 인코딩을 먼저 UTF-8 로 맞춘다
+        #   (기본 cp949 면 한국어 출력이 깨져서 스트리밍된다).
+        # - PowerShell 은 네이티브 명령의 종료코드를 자기 종료코드로 전파하지
+        #   않으므로 마지막에 명시적으로 exit 를 붙인다.
+        wrapped = (
+            "try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } "
+            "catch {}\n"
+            f"{cmd}\n"
+            "if ($LASTEXITCODE -ne $null) { exit $LASTEXITCODE }"
+        )
         return ["powershell", "-NoProfile", "-NonInteractive", "-Command", wrapped]
     return ["/bin/sh", "-c", cmd]
+
+
+def _child_env() -> dict[str, str]:
+    env = dict(os.environ)
+    # 파이썬 자식(pytest·스크립트 등)이 UTF-8 로 출력하게 한다.
+    env.setdefault("PYTHONUTF8", "1")
+    env.setdefault("PYTHONIOENCODING", "utf-8")
+    return env
 
 
 async def _run_shell(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
@@ -173,20 +189,43 @@ async def _run_shell(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
             cwd=str(ctx.root),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
+            env=_child_env(),
         )
     except OSError as exc:
         raise ToolError(f"명령을 시작할 수 없습니다: {exc}") from exc
 
+    collected: list[str] = []
+    size = 0
+    sink = ctx.on_output
+    decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+
+    async def _pump() -> None:
+        nonlocal size
+        assert proc.stdout is not None
+        while True:
+            block = await proc.stdout.read(4096)
+            if not block:
+                break
+            text = decoder.decode(block)
+            if text and size < _MAX_OUTPUT:
+                collected.append(text)
+                size += len(text)
+                if sink is not None:
+                    sink(text)
+        await proc.wait()
+
     try:
-        out_bytes, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        await asyncio.wait_for(_pump(), timeout=timeout)
     except TimeoutError:
         proc.kill()
         await proc.wait()
-        return ToolResult.error(f"시간 초과({timeout}s): {cmd}")
+        partial = "".join(collected).strip()
+        tail = f"\n{partial}" if partial else ""
+        return ToolResult.error(f"시간 초과({timeout}s): {cmd}{tail}")
 
-    output = out_bytes.decode("utf-8", errors="replace")
-    if len(output) > _MAX_OUTPUT:
-        output = output[:_MAX_OUTPUT] + f"\n... [{_MAX_OUTPUT}자에서 잘림]"
+    output = "".join(collected)
+    if size >= _MAX_OUTPUT:
+        output += f"\n... [{_MAX_OUTPUT}자에서 잘림]"
     code = proc.returncode
     header = f"$ {cmd}{sb_note}\n[종료코드 {code}]"
     body = output.strip() or "(출력 없음)"

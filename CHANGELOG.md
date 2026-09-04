@@ -28,6 +28,7 @@
 - 이미지(`@사진.png`)를 첨부한 대화를 저장했다가 `--resume` 하면 첨부가 사라지던 문제 수정 — 세션 직렬화가 메시지의 `images` 필드를 함께 저장·복원 (#62)
 
 ### 추가
+- `run_shell` 출력 실시간 스트리밍 — 명령이 끝나기를 기다리지 않고 출력을 나오는 대로 보여준다. `giga agent`/`giga chat` 은 콘솔에 즉시 흘려 쓰고(결과에는 종료줄만), `giga serve` 는 `session/event {kind:"tool_output"}` 알림. `pytest`·빌드처럼 오래 걸리는 명령의 진행 상황을 볼 수 있다. 타임아웃돼도 그때까지 출력은 결과에 남는다. Windows 자식 프로세스는 콘솔·`PYTHONUTF8` 을 UTF-8 로 맞춰 한국어 출력이 안 깨진다 (#63)
 - `giga plan "작업"` — 계획 모드. 읽기 도구만으로 코드베이스를 조사해 번호 매긴 실행 계획 + "확인 필요"·"위험"을 출력하고 파일은 건드리지 않음. `-x` 를 주면 계획 확인 후 곧바로 `giga agent -w --mode auto-edit` 로 실행 (#32)
 - `update_tasks` 도구 — 에이전트가 3단계 이상 작업을 체크리스트로 분해하고 단계마다 진행 상태(pending/active/done)를 갱신. CLI 와 VS Code 확장이 ✔/▶/○ 로 렌더. 목록은 세션 범위(파일 미기록) (#33)
 - 커스텀 프롬프트 — `.agent/prompts/<이름>.md`(전역 `~/.config/gigachanie/prompts/` 도) 재사용 지시문을 `giga agent -p <이름>` / `giga chat -p <이름>`(반복 가능)으로 시스템 프롬프트에 얹음. `giga prompts` 로 목록·본문. 커스텀 슬래시 명령(한 번 실행)과 달리 세션 내내 유지 (#36)
