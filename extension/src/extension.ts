@@ -29,6 +29,7 @@ type OutMsg =
   | { type: "final"; ok: boolean; stopReason: string; text: string; steps: number; total: number; changed: string[] }
   | { type: "approval"; requestId: string; kind: string; summary: string; detail: string; decided?: string }
   | { type: "ask"; requestId: string; question: string; options: string[]; allowCustom: boolean; answered?: string }
+  | { type: "askDone"; requestId: string; answer: string }
   | { type: "status"; text: string; busy: boolean }
   | { type: "settings"; model: string; mode: string; write: boolean; web: boolean }
   | { type: "completions"; frag: string; items: string[] }
@@ -361,15 +362,28 @@ class ChatController {
           title: "GigaChanie", prompt: params.question, ignoreFocusOut: true,
         })) ?? "";
     }
-    this.respondAsk(params.requestId, answer);
+    if (this.client && this.sessionId) {
+      try {
+        this.client.notify("session/answer", {
+          sessionId: this.sessionId, requestId: params.requestId, answer,
+        });
+      } catch (err: any) {
+        this.output.appendLine(`답변 전달 실패: ${err?.message ?? err}`);
+      }
+    }
   }
 
   private respondAsk(requestId: string, answer: string): void {
+    let known = false;
     for (const msg of this.history) {
       if (msg.type === "ask" && msg.requestId === requestId) {
+        if (msg.answered !== undefined) return; // 이미 답함 (다른 화면에서)
         msg.answered = answer || "(가정하고 진행)";
+        known = true;
       }
     }
+    if (!known) return;
+    this.post({ type: "askDone", requestId, answer });
     if (!this.client || !this.sessionId) {
       return;
     }
@@ -666,6 +680,8 @@ function renderHtml(webview: vscode.Webview): string {
   #input { flex: 1; resize: none; min-height: 44px; max-height: 160px;
     background: var(--vscode-input-background); color: var(--vscode-input-foreground);
     border: 1px solid var(--vscode-input-border); border-radius: 4px; padding: 6px; font-family: inherit; }
+  #input.answering { border-color: var(--vscode-inputValidation-warningBorder);
+    background: var(--vscode-inputValidation-warningBackground); }
   button { background: var(--vscode-button-background); color: var(--vscode-button-foreground);
     border: none; border-radius: 4px; padding: 4px 12px; cursor: pointer; }
   button.secondary { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
@@ -705,7 +721,15 @@ function renderHtml(webview: vscode.Webview): string {
   const modeSel = document.getElementById('mode');
   const writeBtn = document.getElementById('write');
   const webBtn = document.getElementById('web');
+  const PROMPT_PH = '작업을 입력하고 Enter (줄바꿈은 Shift+Enter). @파일 자동완성';
   let current = null;
+  let pendingAskId = null;
+
+  function setAskMode(on) {
+    input.placeholder = on ? '질문에 답을 입력하고 Enter…' : PROMPT_PH;
+    input.classList.toggle('answering', on);
+    if (on) { input.focus(); }
+  }
 
   modelBtn.addEventListener('click', () => vscode.postMessage({ type: 'pickModel' }));
   modeSel.addEventListener('change', () => vscode.postMessage({ type: 'setMode', value: modeSel.value }));
@@ -756,7 +780,14 @@ function renderHtml(webview: vscode.Webview): string {
     if (!text) return;
     input.value = '';
     hideAc();
-    vscode.postMessage({ type: 'submit', text });
+    if (pendingAskId) {
+      vscode.postMessage({ type: 'answer', requestId: pendingAskId, answer: text });
+      resolveAskCard(pendingAskId, text);
+      pendingAskId = null;
+      setAskMode(false);
+    } else {
+      vscode.postMessage({ type: 'submit', text });
+    }
   }
   document.getElementById('send').addEventListener('click', send);
 
@@ -810,51 +841,58 @@ function renderHtml(webview: vscode.Webview): string {
   });
   input.addEventListener('blur', () => setTimeout(hideAc, 120));
 
+  function resolveAskCard(requestId, answer) {
+    const card = log.querySelector('.msg.ask[data-req="' + requestId + '"]');
+    if (!card) return;
+    card.querySelectorAll('button').forEach((el) => (el.disabled = true));
+    const opts = card.querySelector('.ask-opts');
+    if (opts) opts.remove();
+    const hint = card.querySelector('.ask-hint');
+    if (hint) hint.remove();
+    let done = card.querySelector('.ask-done');
+    if (!done) {
+      done = document.createElement('div');
+      done.className = 'meta ask-done';
+      card.appendChild(done);
+    }
+    done.textContent = '→ ' + (answer || '(가정하고 진행)');
+  }
+
   function renderAsk(m) {
     const d = document.createElement('div');
-    d.className = 'msg approval';
+    d.className = 'msg approval ask';
+    d.dataset.req = m.requestId;
     const h = document.createElement('div');
     h.textContent = '질문: ' + m.question;
     d.appendChild(h);
-    if (m.answered) {
-      const s = document.createElement('div');
-      s.className = 'meta';
-      s.textContent = '→ ' + m.answered;
-      d.appendChild(s);
-      log.appendChild(d);
-      log.scrollTop = log.scrollHeight;
-      return;
-    }
-    const row = document.createElement('div');
-    row.style.marginTop = '6px';
-    const finish = (answer) => {
-      row.querySelectorAll('button,input').forEach((el) => (el.disabled = true));
-      vscode.postMessage({ type: 'answer', requestId: m.requestId, answer });
-    };
-    (m.options || []).forEach((opt) => {
-      const b = document.createElement('button');
-      b.textContent = opt;
-      b.style.marginRight = '6px';
-      b.addEventListener('click', () => finish(opt));
-      row.appendChild(b);
-    });
-    d.appendChild(row);
-    if (m.allowCustom !== false) {
-      const wrap2 = document.createElement('div');
-      wrap2.style.cssText = 'display:flex;gap:6px;margin-top:6px';
-      const inp = document.createElement('input');
-      inp.type = 'text';
-      inp.placeholder = '직접 입력…';
-      inp.style.cssText = 'flex:1;background:var(--vscode-input-background);color:var(--vscode-input-foreground);border:1px solid var(--vscode-input-border);border-radius:4px;padding:4px';
-      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); finish(inp.value.trim()); } });
-      const ok = document.createElement('button');
-      ok.textContent = '보내기';
-      ok.addEventListener('click', () => finish(inp.value.trim()));
-      wrap2.appendChild(inp); wrap2.appendChild(ok);
-      d.appendChild(wrap2);
-      setTimeout(() => inp.focus(), 0);
-    }
     log.appendChild(d);
+    if (m.answered) { resolveAskCard(m.requestId, m.answered); return; }
+
+    if ((m.options || []).length) {
+      const row = document.createElement('div');
+      row.className = 'ask-opts';
+      row.style.marginTop = '6px';
+      m.options.forEach((opt) => {
+        const b = document.createElement('button');
+        b.textContent = opt;
+        b.style.marginRight = '6px';
+        b.addEventListener('click', () => {
+          vscode.postMessage({ type: 'answer', requestId: m.requestId, answer: opt });
+          resolveAskCard(m.requestId, opt);
+          if (pendingAskId === m.requestId) { pendingAskId = null; setAskMode(false); }
+        });
+        row.appendChild(b);
+      });
+      d.appendChild(row);
+    }
+    if (m.allowCustom !== false) {
+      const hint = document.createElement('div');
+      hint.className = 'meta ask-hint';
+      hint.textContent = (m.options || []).length ? '또는 아래 입력창에 직접 답하세요.' : '아래 입력창에 답을 쓰고 Enter.';
+      d.appendChild(hint);
+      pendingAskId = m.requestId;
+      setAskMode(true);
+    }
     log.scrollTop = log.scrollHeight;
   }
 
@@ -887,8 +925,12 @@ function renderHtml(webview: vscode.Webview): string {
 
   window.addEventListener('message', (ev) => {
     const m = ev.data;
-    if (m.type === 'clear') { log.innerHTML = ''; current = null; tasksEl = null; }
+    if (m.type === 'clear') { log.innerHTML = ''; current = null; tasksEl = null; pendingAskId = null; setAskMode(false); }
     else if (m.type === 'settings') { applySettings(m); }
+    else if (m.type === 'askDone') {
+      resolveAskCard(m.requestId, m.answer);
+      if (pendingAskId === m.requestId) { pendingAskId = null; setAskMode(false); }
+    }
     else if (m.type === 'user') { add('user', m.text); current = null; }
     else if (m.type === 'status') { statusEl.textContent = m.text; }
     else if (m.type === 'completions') {
