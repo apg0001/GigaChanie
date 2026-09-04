@@ -28,12 +28,13 @@ type OutMsg =
   | { type: "event"; kind: string; text?: string; toolName?: string; isError?: boolean }
   | { type: "final"; ok: boolean; stopReason: string; text: string; steps: number; total: number; changed: string[] }
   | { type: "approval"; requestId: string; kind: string; summary: string; detail: string; decided?: string }
+  | { type: "ask"; requestId: string; question: string; options: string[]; allowCustom: boolean; answered?: string }
   | { type: "status"; text: string; busy: boolean }
   | { type: "settings"; model: string; mode: string; write: boolean; web: boolean }
   | { type: "completions"; frag: string; items: string[] }
   | { type: "clear" };
 
-const REPLAYABLE = new Set(["user", "event", "final", "approval"]);
+const REPLAYABLE = new Set(["user", "event", "final", "approval", "ask"]);
 const HISTORY_CAP = 400;
 
 /**
@@ -161,6 +162,9 @@ class ChatController {
         break;
       case "approve":
         if (typeof m.requestId === "string") this.respondApproval(m.requestId, m.decision);
+        break;
+      case "answer":
+        if (typeof m.requestId === "string") this.respondAsk(m.requestId, String(m.answer ?? ""));
         break;
       case "cancel":
         void this.cancel();
@@ -323,40 +327,54 @@ class ChatController {
         detail: params.detail ?? "",
       });
     } else if (method === "session/ask") {
-      void this.handleAsk(params);
+      if (this.surfaces.size > 0) {
+        // 채팅 안에 질문 카드로 표시 (상단 팝업 대신)
+        this.post({
+          type: "ask",
+          requestId: params.requestId,
+          question: String(params.question ?? ""),
+          options: Array.isArray(params.options) ? params.options.map(String) : [],
+          allowCustom: params.allowCustom !== false,
+        });
+        this.focusChat();
+      } else {
+        void this.handleAskFallback(params);
+      }
     }
   }
 
-  private async handleAsk(params: any): Promise<void> {
-    if (!this.client || !this.sessionId) {
-      return;
-    }
+  /** 열린 채팅 화면이 하나도 없을 때만 쓰는 QuickPick 폴백. */
+  private async handleAskFallback(params: any): Promise<void> {
     const options: string[] = Array.isArray(params.options) ? params.options : [];
     const custom = "$(edit) 직접 입력…";
     const items = params.allowCustom ? [...options, custom] : options;
     let answer = "";
     if (items.length > 0) {
       const picked = await vscode.window.showQuickPick(items, {
-        title: "GigaChanie",
-        placeHolder: params.question,
-        ignoreFocusOut: true,
+        title: "GigaChanie", placeHolder: params.question, ignoreFocusOut: true,
       });
       answer = picked === custom || picked === undefined ? "" : picked;
     }
     if (!answer && params.allowCustom !== false) {
       answer =
         (await vscode.window.showInputBox({
-          title: "GigaChanie",
-          prompt: params.question,
-          ignoreFocusOut: true,
+          title: "GigaChanie", prompt: params.question, ignoreFocusOut: true,
         })) ?? "";
     }
+    this.respondAsk(params.requestId, answer);
+  }
+
+  private respondAsk(requestId: string, answer: string): void {
+    for (const msg of this.history) {
+      if (msg.type === "ask" && msg.requestId === requestId) {
+        msg.answered = answer || "(가정하고 진행)";
+      }
+    }
+    if (!this.client || !this.sessionId) {
+      return;
+    }
     try {
-      this.client.notify("session/answer", {
-        sessionId: this.sessionId,
-        requestId: params.requestId,
-        answer,
-      });
+      this.client.notify("session/answer", { sessionId: this.sessionId, requestId, answer });
     } catch (err: any) {
       this.output.appendLine(`답변 전달 실패: ${err?.message ?? err}`);
     }
@@ -792,6 +810,54 @@ function renderHtml(webview: vscode.Webview): string {
   });
   input.addEventListener('blur', () => setTimeout(hideAc, 120));
 
+  function renderAsk(m) {
+    const d = document.createElement('div');
+    d.className = 'msg approval';
+    const h = document.createElement('div');
+    h.textContent = '질문: ' + m.question;
+    d.appendChild(h);
+    if (m.answered) {
+      const s = document.createElement('div');
+      s.className = 'meta';
+      s.textContent = '→ ' + m.answered;
+      d.appendChild(s);
+      log.appendChild(d);
+      log.scrollTop = log.scrollHeight;
+      return;
+    }
+    const row = document.createElement('div');
+    row.style.marginTop = '6px';
+    const finish = (answer) => {
+      row.querySelectorAll('button,input').forEach((el) => (el.disabled = true));
+      vscode.postMessage({ type: 'answer', requestId: m.requestId, answer });
+    };
+    (m.options || []).forEach((opt) => {
+      const b = document.createElement('button');
+      b.textContent = opt;
+      b.style.marginRight = '6px';
+      b.addEventListener('click', () => finish(opt));
+      row.appendChild(b);
+    });
+    d.appendChild(row);
+    if (m.allowCustom !== false) {
+      const wrap2 = document.createElement('div');
+      wrap2.style.cssText = 'display:flex;gap:6px;margin-top:6px';
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.placeholder = '직접 입력…';
+      inp.style.cssText = 'flex:1;background:var(--vscode-input-background);color:var(--vscode-input-foreground);border:1px solid var(--vscode-input-border);border-radius:4px;padding:4px';
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); finish(inp.value.trim()); } });
+      const ok = document.createElement('button');
+      ok.textContent = '보내기';
+      ok.addEventListener('click', () => finish(inp.value.trim()));
+      wrap2.appendChild(inp); wrap2.appendChild(ok);
+      d.appendChild(wrap2);
+      setTimeout(() => inp.focus(), 0);
+    }
+    log.appendChild(d);
+    log.scrollTop = log.scrollHeight;
+  }
+
   function renderApproval(m) {
     const d = document.createElement('div');
     d.className = 'msg approval';
@@ -881,6 +947,7 @@ function renderHtml(webview: vscode.Webview): string {
       current = null;
     }
     else if (m.type === 'approval') { renderApproval(m); }
+    else if (m.type === 'ask') { renderAsk(m); }
   });
 </script>
 </body>

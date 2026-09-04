@@ -145,6 +145,7 @@ class Agent:
         self._usage = Usage()
         self._call_counts: dict[str, int] = {}
         self._nudges = 0
+        self._ask_streak = 0
 
     # ------------------------------------------------------------------ run
 
@@ -163,6 +164,7 @@ class Agent:
 
         self._usage = Usage()  # 이 run() 동안의 사용량
         self._nudges = 0
+        self._ask_streak = 0
         try:
             return await self._run_loop(emit)
         finally:
@@ -366,9 +368,20 @@ class Agent:
                     )
                 )
 
+            self._ask_streak = self._ask_streak + 1 if call.name == "ask_user" else 0
+
             self.ctx.on_output = _sink
             try:
-                result = await self._invoke(call)
+                if call.name == "ask_user" and self._ask_streak >= 3:
+                    # 약한 모델이 답을 받고도 계속 되묻는 루프 차단
+                    result = ToolResult(
+                        content=(
+                            "ask_user 를 연달아 여러 번 호출했습니다. 더 묻지 말고 "
+                            "지금까지 받은 정보와 가장 합리적인 가정으로 작업을 시작하세요."
+                        )
+                    )
+                else:
+                    result = await self._invoke(call)
             finally:
                 self.ctx.on_output = None
             emit(

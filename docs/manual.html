@@ -398,7 +398,8 @@
         </div>
         <div class="card">
           <h4>ask_user</h4>
-          <p>사용자만 결정할 수 있는 모호한 지점에서 추측 대신 선택지나 자유 입력을 요청합니다.</p>
+          <p>사용자만 결정할 수 있는 모호한 지점에서 추측 대신 선택지나 자유 입력을 요청합니다.
+            답을 받으면 그대로 진행하고 다시 묻지 않습니다. 3회 연속 호출하면 차단됩니다(되묻기 루프 방지).</p>
         </div>
       </div>
     </section>
@@ -1068,7 +1069,7 @@ stop:
             대화·세션을 공유합니다. 채팅 <b>헤더에서 모델·승인 모드·write·web 을 클릭으로
             전환</b>(설정 JSON 불필요), 모델 버튼은 설치 여부·장비 적합도가 붙은 목록을 띄웁니다.
             셸 출력 실시간 표시, <code>suggest</code> 모드에서 뷰 안 허용/거부 승인,
-            <code>ask_user</code> 는 QuickPick·입력창, 상태줄에 모델·모드·실행 상태.
+            <code>ask_user</code> 질문은 채팅 안 인라인 카드(옵션 버튼 + 자유입력), 상태줄에 모델·모드·실행 상태.
             답변의 변경 파일을 클릭하면 에디터에서 열리고 <code>(diff)</code> 로 HEAD 대비 변경을
             봅니다. 입력창에서 <code>@</code> 뒤 파일명은 자동완성(↑↓/Tab). 설정
             <code>gigachanie.command</code>(기본 <code>giga</code>) · <code>gigachanie.model</code> ·

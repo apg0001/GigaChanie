@@ -200,8 +200,18 @@ async def _ask_user(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
 
     answer = ctx.ask_user(question, options, allow_custom)
     if not answer.strip():
-        return ToolResult(content="(사용자가 답하지 않았습니다. 합리적으로 가정하고 진행하세요.)")
-    return ToolResult(content=f"사용자 답변: {answer.strip()}")
+        return ToolResult(
+            content=(
+                "사용자가 답하지 않았습니다. 더 묻지 말고 가장 합리적인 가정으로 "
+                "지금 바로 작업을 진행하세요. 어떤 가정을 했는지는 최종 답변에서 밝히세요."
+            )
+        )
+    return ToolResult(
+        content=(
+            f'사용자 답변: "{answer.strip()}"\n'
+            "이 답변에 따라 지금 작업을 수행하세요. 같은 것을 다시 묻지 마세요."
+        )
+    )
 
 
 def register_readonly_tools(reg: ToolRegistry) -> None:
