@@ -23,6 +23,7 @@ EventKind = Literal[
     "assistant_delta",
     "assistant_text",
     "tool_call",
+    "tool_output",
     "tool_result",
     "compact",
     "done",
@@ -350,7 +351,26 @@ class Agent:
                     )
                 return True
 
-            result = await self._invoke(call)
+            streamed = [False]
+
+            def _sink(
+                chunk: str,
+                _name: str = call.name,
+                _step: int = step,
+                _flag: list[bool] = streamed,
+            ) -> None:
+                _flag[0] = True
+                emit(
+                    AgentEvent(
+                        kind="tool_output", tool_name=_name, text=chunk, step=_step
+                    )
+                )
+
+            self.ctx.on_output = _sink
+            try:
+                result = await self._invoke(call)
+            finally:
+                self.ctx.on_output = None
             emit(
                 AgentEvent(
                     kind="tool_result",
@@ -358,6 +378,7 @@ class Agent:
                     text=result.content,
                     is_error=result.is_error,
                     step=step,
+                    tool_args={"streamed": True} if streamed[0] else {},
                 )
             )
             self.messages.append(Message.tool_result(call, result.content))

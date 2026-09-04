@@ -37,6 +37,9 @@ class ToolContext:
     sandbox: Any = None  # SandboxPlan | None
     # 네트워크 허용 (샌드박스 사용 시 의미). 기본 True.
     allow_network: bool = True
+    # 실행 도구(run_shell 등)가 부분 출력을 실시간으로 흘려보내는 싱크.
+    # 에이전트 루프가 도구 호출 직전에 설정하고 끝나면 None 으로 되돌린다.
+    on_output: Callable[[str], None] | None = None
     # 도구가 남기는 부가 메모(감사 로그 등)
     scratch: dict[str, Any] = field(default_factory=dict)
 

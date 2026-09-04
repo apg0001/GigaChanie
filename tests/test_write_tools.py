@@ -71,6 +71,36 @@ def test_run_shell_기본_명령(tmp_path: Path) -> None:
     assert "[종료코드 0]" in res.content
 
 
+def test_run_shell_출력_실시간_스트리밍(tmp_path: Path) -> None:
+    ctx = _ctx(tmp_path)
+    chunks: list[str] = []
+    ctx.on_output = chunks.append
+    code = (
+        "import sys,time\n"
+        "for i in range(3):\n"
+        "    print('line', i, flush=True)\n"
+    )
+    res = _run("run_shell", {"command": f'{sys.executable} -c "{code}"'}, ctx)
+    assert not res.is_error
+    streamed = "".join(chunks)
+    assert "line 0" in streamed and "line 2" in streamed
+    # 최종 결과에도 같은 출력이 담긴다
+    assert "line 1" in res.content and "[종료코드 0]" in res.content
+
+
+def test_run_shell_한글_출력_스트리밍_깨지지_않음(tmp_path: Path) -> None:
+    ctx = _ctx(tmp_path)
+    chunks: list[str] = []
+    ctx.on_output = chunks.append
+    res = _run(
+        "run_shell",
+        {"command": f'{sys.executable} -c "print(\'가나다라마바사\')"'},
+        ctx,
+    )
+    assert "가나다라마바사" in "".join(chunks)
+    assert "가나다라마바사" in res.content
+
+
 def test_run_shell_거부목록_차단(tmp_path: Path) -> None:
     res = _run("run_shell", {"command": "rm -rf /"}, _ctx(tmp_path))
     assert res.is_error
