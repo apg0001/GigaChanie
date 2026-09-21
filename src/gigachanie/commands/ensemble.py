@@ -38,7 +38,10 @@ def ensemble(
     prompt = expand_refs(" ".join(question), root).text
     try:
         members = [resolve_backend(s, root) for s in specs]
-        judge_pair = resolve_backend(judge, root) if judge else members[0]
+        # judge 는 항상 새 백엔드 인스턴스를 만든다. members[0] 을 그대로 재사용하면
+        # 그 멤버가 답변 후 release() 로 백엔드를 닫아버려 판정 호출이 깨진 커넥션에
+        # 대고 실행돼 크래시한다 (#66).
+        judge_pair = resolve_backend(judge or specs[0], root)
     except BackendError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=1) from None

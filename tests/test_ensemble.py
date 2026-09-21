@@ -56,3 +56,27 @@ def test_cli_동작(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     )
     assert res.exit_code == 0
     assert "종합" in res.stdout
+
+
+def test_판정_생략시_멤버와_별개_백엔드를_쓴다(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """-j 없이 실행하면 첫 멤버가 답한 뒤 release() 로 백엔드를 닫으므로,
+    판정도 그 인스턴스를 그대로 쓰면(닫힌 커넥션에 요청) 실제 백엔드에서
+    크래시한다 (#66). resolve_backend 를 판정에도 새로 호출해야 한다."""
+    created: list[ScriptedBackend] = []
+
+    def fake_resolve(spec: str, root):
+        be = ScriptedBackend([text_response(f"{spec} 의 답")])
+        created.append(be)
+        return spec, be
+
+    monkeypatch.setattr(emod, "resolve_backend", fake_resolve)
+    res = runner.invoke(
+        app, ["ensemble", "-C", str(tmp_path), "-m", "x", "-m", "y", "질문"]
+    )
+    assert res.exit_code == 0
+    # x(멤버), y(멤버), x(판정용 새 인스턴스) = 3번 resolve, 판정은 별개 객체
+    assert len(created) == 3
+    assert created[0] is not created[2]
+    assert created[2].received  # 판정 모델의 chat() 이 실제로 호출됨
