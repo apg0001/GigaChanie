@@ -41,26 +41,63 @@ from gigachanie.ui import make_console
 console = make_console()
 
 
+def _full_diff_including_new_files(root: Path) -> str:
+    """HEAD 대비 diff. `git diff HEAD` 는 추적 중인 파일의 수정분만 보여주고
+    write_file 로 갓 만든(아직 커밋 안 된) 새 파일은 빠뜨리므로, 그런 파일은
+    `/dev/null` → 전체 내용의 "새 파일" diff 로 합성해 붙인다.
+    """
+    import difflib
+    import subprocess
+
+    def _git(args: list[str]) -> str:
+        try:
+            return subprocess.run(
+                ["git", "-C", str(root), *args],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=15,
+                check=False,
+            ).stdout
+        except (OSError, subprocess.SubprocessError):
+            return ""
+
+    parts = []
+    tracked = _git(["diff", "HEAD"])
+    if tracked.strip():
+        parts.append(tracked.rstrip("\n"))
+
+    for rel in _git(["ls-files", "--others", "--exclude-standard"]).splitlines():
+        rel = rel.strip()
+        if not rel:
+            continue
+        try:
+            content = (root / rel).read_text("utf-8", errors="replace")
+        except OSError:
+            continue
+        body = "".join(
+            difflib.unified_diff(
+                [],
+                content.splitlines(keepends=True),
+                fromfile="/dev/null",
+                tofile=f"b/{rel}",
+            )
+        )
+        if body:
+            parts.append(f"diff --git a/{rel} b/{rel}\nnew file mode 100644\n{body}")
+
+    return "\n".join(parts)
+
+
 async def _pipeline_review(
     ag: Agent, root: Path, task: str, *, apply_fix: bool
 ) -> None:
     """작업 후 git diff 를 검토 모델에게 리뷰받고, apply_fix 면 한 번 더 수정한다."""
-    import subprocess
-
     from gigachanie.orchestra.pipeline import load_pipeline_config, review_diff
     from gigachanie.serving.factory import build_backend as _bb
 
-    try:
-        proc = subprocess.run(
-            ["git", "-C", str(root), "diff", "HEAD"],
-            capture_output=True,
-            text=True,
-            timeout=15,
-            check=False,
-        )
-        diff = proc.stdout
-    except (OSError, subprocess.SubprocessError):
-        diff = ""
+    diff = _full_diff_including_new_files(root)
     if not diff.strip():
         console.print("[dim]리뷰: 변경 없음 (git diff 비어 있음)[/dim]")
         return

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -144,6 +145,43 @@ def test_쓰기_승인_왕복(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -
 
     assert (tmp_path / "new.txt").read_text(encoding="utf-8") == "x"
     assert _replies(srv)[2]["result"]["ok"] is True
+
+
+def test_새파일_생성도_changedFiles에_잡힌다(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """확장의 '변경 파일' 클릭-열기 목록은 changedFiles 를 그대로 쓴다.
+    git diff --name-only HEAD 만 보면 커밋 안 된 새 파일이 빠져서
+    write_file 로 새 파일을 만든 흔한 경우가 목록에서 통째로 사라졌었다 (#67)."""
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=tmp_path, check=True)
+
+    backend = ScriptedBackend(
+        [
+            tool_response("write_file", {"path": "new.txt", "content": "x"}),
+            text_response("파일을 만들었습니다."),
+        ]
+    )
+    srv = _mk(monkeypatch, backend)
+    srv.dispatch(
+        {
+            "jsonrpc": "2.0", "id": 1, "method": "session/new",
+            "params": {"root": str(tmp_path), "write": True, "mode": "full-auto"},
+        }
+    )
+    sid = _replies(srv)[1]["result"]["sessionId"]
+    srv.dispatch(
+        {
+            "jsonrpc": "2.0", "id": 2, "method": "session/prompt",
+            "params": {"sessionId": sid, "text": "new.txt 만들어줘"},
+        }
+    )
+    srv._sessions[sid].worker.join(timeout=10)  # type: ignore[union-attr]
+
+    result = _replies(srv)[2]["result"]
+    assert result["ok"] is True
+    assert "new.txt" in result["changedFiles"]
 
 
 def test_취소(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
