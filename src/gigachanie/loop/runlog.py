@@ -18,11 +18,10 @@ from gigachanie.loop.agent import AgentEvent, AgentResult
 _FILE = Path(".agent") / "logs" / "runs.jsonl"
 
 
-def git_changed_files(root: Path) -> list[str]:
-    """작업 루트에서 HEAD 대비 변경된 파일 목록 (git 없으면 빈 목록)."""
+def _git_lines(root: Path, args: list[str]) -> list[str]:
     try:
         out = subprocess.run(
-            ["git", "-C", str(root), "diff", "--name-only", "HEAD"],
+            ["git", "-C", str(root), *args],
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -31,7 +30,25 @@ def git_changed_files(root: Path) -> list[str]:
         ).stdout
     except OSError:
         return []
-    return out.split()
+    return [ln for ln in out.splitlines() if ln.strip()]
+
+
+def git_changed_files(root: Path) -> list[str]:
+    """작업 루트에서 HEAD 대비 변경된 파일 목록 (git 없으면 빈 목록).
+
+    추적 중인 파일의 수정분(`git diff --name-only HEAD`)과 새로 만들어
+    아직 커밋되지 않은(untracked, gitignore 제외) 파일을 모두 포함한다.
+    전자만 보면 에이전트가 write_file 로 만든 새 파일이 하나도 안 잡힌다.
+    """
+    tracked = _git_lines(root, ["diff", "--name-only", "HEAD"])
+    untracked = _git_lines(root, ["ls-files", "--others", "--exclude-standard"])
+    seen: set[str] = set()
+    out: list[str] = []
+    for f in (*tracked, *untracked):
+        if f not in seen:
+            seen.add(f)
+            out.append(f)
+    return out
 
 
 class RunLogger:

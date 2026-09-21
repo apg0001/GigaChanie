@@ -860,7 +860,10 @@ router:
           <p>기본은 <code>git diff</code>(작업 트리). 파이프로 diff 를 넣어도 됩니다
             (<code>git show HEAD | giga review</code>). 지적사항이 있으면 종료코드 1.</p>
           <p><code>giga agent --review</code> 는 작업이 끝나면 자동으로 리뷰하고,
-            <code>--review-fix</code> 는 지적사항을 에이전트에 되돌려 한 번 더 수정합니다.</p>
+            <code>--review-fix</code> 는 지적사항을 에이전트에 되돌려 한 번 더 수정합니다.
+            이때 diff 는 <code>git diff HEAD</code>(추적 파일 수정분)에 에이전트가 방금
+            만든(아직 커밋 안 된) 새 파일의 전체 내용도 "새 파일" diff 로 합쳐서 검토 모델에
+            보냅니다 — 새 파일만 만든 작업도 리뷰를 건너뛰지 않습니다.</p>
           <pre><code><span class="c"># orchestra.yaml</span>
 models:
   drafter:  { backend: ollama, model: "qwen2.5-coder-7b-instruct" }
@@ -1053,7 +1056,7 @@ stop:
               <tr><td><code>session/history</code></td><td>저장된 세션 목록 (id·제목·모델·턴 수) — <code>giga chat</code> 과 <code>giga serve</code> 대화 모두 포함</td></tr>
               <tr><td><code>models/list</code></td><td>→ <code>{current, backend, models:[{id, display, params, toolCalling, installed, fit}]}</code> — 확장 모델 피커용</td></tr>
               <tr><td><code>models/use</code></td><td><code>{model}</code> — 사용자 설정에 기본 모델로 저장(<code>giga chat</code> 등과 공유)</td></tr>
-              <tr><td><code>session/prompt</code></td><td><code>{sessionId, text}</code> → <code>{ok, finalText, stopReason, steps, tokens, changedFiles}</code>. 실행 중 <code>session/event</code> 알림 스트리밍</td></tr>
+              <tr><td><code>session/prompt</code></td><td><code>{sessionId, text}</code> → <code>{ok, finalText, stopReason, steps, tokens, changedFiles}</code>. <code>changedFiles</code> 는 수정된 추적 파일 + 새로 만든(미추적) 파일 모두 포함. 실행 중 <code>session/event</code> 알림 스트리밍</td></tr>
               <tr><td><code>session/cancel</code></td><td>실행 중인 프롬프트 취소</td></tr>
               <tr><td><code>session/approve</code></td><td><code>{sessionId, requestId, decision}</code> — allow / deny / always</td></tr>
               <tr><td><code>session/answer</code></td><td><code>{sessionId, requestId, answer}</code> — <code>ask_user</code> 질문에 답</td></tr>

@@ -1,6 +1,7 @@
 """실행 로그(runlog) 테스트."""
 
 import json
+import subprocess
 from pathlib import Path
 
 from conftest import ScriptedBackend, text_response, tool_response
@@ -84,6 +85,24 @@ def test_runlog_cli_표시(tmp_path: Path) -> None:
     res = runner.invoke(app, ["runlog", "-C", str(tmp_path), "--stats"])
     assert res.exit_code == 0
     assert "실행 1건" in res.stdout
+
+
+def test_git_changed_files_새파일도_포함(tmp_path: Path) -> None:
+    """git diff --name-only HEAD 만 보면 커밋 안 된 새(untracked) 파일이 안 잡힌다.
+    write_file 로 새 파일을 만드는 건 흔한 경우라 반드시 목록에 있어야 한다."""
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=tmp_path, check=True)
+    (tmp_path / "existing.txt").write_text("hello\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-qm", "init"], cwd=tmp_path, check=True)
+
+    (tmp_path / "existing.txt").write_text("hello\nmodified\n", encoding="utf-8")
+    (tmp_path / "brandnew.py").write_text("x = 1\n", encoding="utf-8")
+
+    changed = git_changed_files(tmp_path)
+    assert "existing.txt" in changed
+    assert "brandnew.py" in changed
 
 
 def test_runlog_cli_로그없음(tmp_path: Path) -> None:
