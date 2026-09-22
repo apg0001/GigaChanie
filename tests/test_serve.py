@@ -184,6 +184,53 @@ def test_새파일_생성도_changedFiles에_잡힌다(
     assert "new.txt" in result["changedFiles"]
 
 
+def test_changedFiles는_커밋_안한_이전_턴_파일과_안_섞인다(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """git diff HEAD 는 커밋 전까지 누적이라, 커밋 없이 턴을 거듭하면
+    이전 턴에서 만든 파일까지 매번 changedFiles 에 계속 끼어 나왔다(#68).
+    체크포인트 기반이면 턴마다 그 턴에서 실제로 바뀐 파일만 보여야 한다."""
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=tmp_path, check=True)
+
+    backend = ScriptedBackend(
+        [
+            tool_response("write_file", {"path": "a.txt", "content": "a"}),
+            text_response("a 완료"),
+            tool_response("write_file", {"path": "b.txt", "content": "b"}),
+            text_response("b 완료"),
+        ]
+    )
+    srv = _mk(monkeypatch, backend)
+    srv.dispatch(
+        {
+            "jsonrpc": "2.0", "id": 1, "method": "session/new",
+            "params": {"root": str(tmp_path), "write": True, "mode": "full-auto"},
+        }
+    )
+    sid = _replies(srv)[1]["result"]["sessionId"]
+
+    srv.dispatch(
+        {
+            "jsonrpc": "2.0", "id": 2, "method": "session/prompt",
+            "params": {"sessionId": sid, "text": "a.txt 만들어줘"},
+        }
+    )
+    srv._sessions[sid].worker.join(timeout=10)  # type: ignore[union-attr]
+    assert _replies(srv)[2]["result"]["changedFiles"] == ["a.txt"]
+
+    srv.dispatch(
+        {
+            "jsonrpc": "2.0", "id": 3, "method": "session/prompt",
+            "params": {"sessionId": sid, "text": "b.txt 도 만들어줘"},
+        }
+    )
+    srv._sessions[sid].worker.join(timeout=10)  # type: ignore[union-attr]
+    # 커밋 안 했으니 a.txt 도 여전히 git 상 미추적 상태지만, 이번 턴엔 안 나와야 한다
+    assert _replies(srv)[3]["result"]["changedFiles"] == ["b.txt"]
+
+
 def test_취소(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     backend = ScriptedBackend(
         [tool_response("write_file", {"path": "n.txt", "content": "x"})]

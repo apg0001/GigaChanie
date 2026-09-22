@@ -91,6 +91,62 @@ def test_agent_run_이_턴을_기록(tmp_path: Path) -> None:
     assert (tmp_path / "m.py").read_text(encoding="utf-8") == "def f():\n    return 1\n"
 
 
+def test_current_files_열린_턴의_파일만(tmp_path: Path) -> None:
+    store = CheckpointStore(tmp_path)
+    assert store.current_files() == []  # 턴 시작 전엔 빈 목록
+
+    store.open_turn("작업")
+    store.before_write(tmp_path / "a.py")
+    store.before_write(tmp_path / "b.py")
+    assert sorted(store.current_files()) == ["a.py", "b.py"]
+
+    store.close_turn()
+    assert store.current_files() == []  # 턴이 닫히면 다시 빈 목록(_current=None)
+
+
+def test_agent_last_changed_files는_턴마다_새로_시작한다(tmp_path: Path) -> None:
+    """git diff HEAD 는 커밋 안 하고 여러 턴을 거치면 이전 턴 파일까지 계속
+    섞여 나온다. 체크포인트 기반은 턴마다 정확히 그 턴의 파일만 보여줘야 한다."""
+    store = CheckpointStore(tmp_path)
+    ctx = _ctx(tmp_path, store)
+    backend = ScriptedBackend(
+        [
+            tool_response("write_file", {"path": "a.py", "content": "a"}),
+            text_response("a 완료"),
+            tool_response("write_file", {"path": "b.py", "content": "b"}),
+            text_response("b 완료"),
+        ]
+    )
+    agent = Agent(backend, build_registry(writable=True), ctx)
+
+    run_sync(agent.run("a.py 만들어"))
+    assert agent.last_changed_files == ["a.py"]
+
+    run_sync(agent.run("b.py 도 만들어"))
+    assert agent.last_changed_files == ["b.py"]  # a.py 는 다시 안 나옴
+
+
+def test_resolve_changed_files_체크포인트_없으면_git으로_폴백(tmp_path: Path) -> None:
+    import subprocess
+
+    from gigachanie.loop.runlog import resolve_changed_files
+
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=tmp_path, check=True)
+    (tmp_path / "existing.txt").write_text("x\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-qm", "init"], cwd=tmp_path, check=True)
+    (tmp_path / "existing.txt").write_text("y\n", encoding="utf-8")
+
+    # 체크포인트 비활성(readonly 세션 등) → last_changed_files 는 None → git 폴백
+    agent = Agent(
+        ScriptedBackend([]), build_registry(writable=True), ToolContext(root=tmp_path)
+    )
+    assert agent.last_changed_files is None
+    assert "existing.txt" in resolve_changed_files(agent, tmp_path)
+
+
 def test_giga_undo_cli(tmp_path: Path) -> None:
     (tmp_path / "a.txt").write_text("before\n", encoding="utf-8")
     store = CheckpointStore(tmp_path)

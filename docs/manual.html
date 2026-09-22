@@ -1056,7 +1056,7 @@ stop:
               <tr><td><code>session/history</code></td><td>저장된 세션 목록 (id·제목·모델·턴 수) — <code>giga chat</code> 과 <code>giga serve</code> 대화 모두 포함</td></tr>
               <tr><td><code>models/list</code></td><td>→ <code>{current, backend, models:[{id, display, params, toolCalling, installed, fit}]}</code> — 확장 모델 피커용</td></tr>
               <tr><td><code>models/use</code></td><td><code>{model}</code> — 사용자 설정에 기본 모델로 저장(<code>giga chat</code> 등과 공유)</td></tr>
-              <tr><td><code>session/prompt</code></td><td><code>{sessionId, text}</code> → <code>{ok, finalText, stopReason, steps, tokens, changedFiles}</code>. <code>changedFiles</code> 는 수정된 추적 파일 + 새로 만든(미추적) 파일 모두 포함. 실행 중 <code>session/event</code> 알림 스트리밍</td></tr>
+              <tr><td><code>session/prompt</code></td><td><code>{sessionId, text}</code> → <code>{ok, finalText, stopReason, steps, tokens, changedFiles}</code>. <code>changedFiles</code> 는 수정된 추적 파일 + 새로 만든(미추적) 파일을 포함하되, <b>이번 턴에 실제로 건드린 파일만</b>(체크포인트 기반) — 커밋 안 하고 여러 턴을 거쳐도 이전 턴 파일이 다시 섞이지 않음. 실행 중 <code>session/event</code> 알림 스트리밍</td></tr>
               <tr><td><code>session/cancel</code></td><td>실행 중인 프롬프트 취소</td></tr>
               <tr><td><code>session/approve</code></td><td><code>{sessionId, requestId, decision}</code> — allow / deny / always</td></tr>
               <tr><td><code>session/answer</code></td><td><code>{sessionId, requestId, answer}</code> — <code>ask_user</code> 질문에 답</td></tr>

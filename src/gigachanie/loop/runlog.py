@@ -13,7 +13,7 @@ import time
 from collections import Counter
 from pathlib import Path
 
-from gigachanie.loop.agent import AgentEvent, AgentResult
+from gigachanie.loop.agent import Agent, AgentEvent, AgentResult
 
 _FILE = Path(".agent") / "logs" / "runs.jsonl"
 
@@ -49,6 +49,19 @@ def git_changed_files(root: Path) -> list[str]:
             seen.add(f)
             out.append(f)
     return out
+
+
+def resolve_changed_files(agent: Agent, root: Path) -> list[str]:
+    """방금 turn 에서 실제로 바뀐 파일 목록.
+
+    체크포인트가 켜져 있으면 그 턴 단위 기록(`Agent.last_changed_files`)을 쓴다 —
+    git diff 는 HEAD 기준 누적이라, 커밋 없이 여러 턴을 거치면 이전 턴에서
+    바뀐 파일까지 계속 섞여 나온다. 체크포인트가 꺼져 있으면(읽기전용,
+    `--no-checkpoint`) 그 정밀도를 포기하고 git diff 로 대체한다.
+    """
+    if agent.last_changed_files is not None:
+        return agent.last_changed_files
+    return git_changed_files(root)
 
 
 class RunLogger:

@@ -146,6 +146,11 @@ class Agent:
         self._call_counts: dict[str, int] = {}
         self._nudges = 0
         self._ask_streak = 0
+        # 마지막 run() 이 실제로 건드린 파일. None = 체크포인트 비활성(알 수 없음,
+        # 호출부가 git diff 등으로 대체해야 함). 파일 목록 기반 "변경 파일" 표시가
+        # git diff HEAD 하나로만 판단하면 커밋 안 하고 여러 턴을 거칠 때 이전 턴
+        # 파일까지 계속 섞여 나온다 — 체크포인트는 턴 단위라 정확하다.
+        self.last_changed_files: list[str] | None = None
 
     # ------------------------------------------------------------------ run
 
@@ -170,6 +175,8 @@ class Agent:
         finally:
             # 취소 예외(에디터의 _Cancelled 등)로 빠져나가도 턴은 닫는다.
             if self.ctx.checkpoints is not None:
+                # close_turn() 이 _current 를 비우기 전에 이번 턴 파일 목록을 건져 둔다.
+                self.last_changed_files = self.ctx.checkpoints.current_files()
                 self.ctx.checkpoints.close_turn()
 
     async def _run_loop(self, emit: EventHandler) -> AgentResult:

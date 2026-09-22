@@ -82,6 +82,16 @@ class CheckpointStore:
         self._save(turns)
         self._current = None
 
+    def current_files(self) -> list[str]:
+        """지금 열려 있는 턴에서 지금까지 실제로 건드린 파일들.
+
+        close_turn() 이 끝나기 전(같은 run() 안)에 호출해야 의미가 있다 —
+        close_turn() 은 _current 를 None 으로 되돌린다.
+        """
+        if self._current is None:
+            return []
+        return list(self._current.files.keys())
+
     def before_write(self, path: Path) -> None:
         """path 를 수정하기 직전 호출. 현재 턴에서 처음이면 스냅샷."""
         if self._current is None:
