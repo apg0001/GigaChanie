@@ -34,7 +34,7 @@ from gigachanie.loop.checkpoint import CheckpointStore
 from gigachanie.loop.hooks import HookRunner
 from gigachanie.loop.procman import ProcessManager
 from gigachanie.loop.prompt import think_directive
-from gigachanie.loop.runlog import RunLogger, git_changed_files
+from gigachanie.loop.runlog import RunLogger, resolve_changed_files
 from gigachanie.loop.subagent import register_subagent_tool
 from gigachanie.loop.tools import ToolContext
 from gigachanie.permissions import load_permissions
@@ -411,7 +411,7 @@ async def _run_turn(session: ChatSession, text: str) -> None:
         console.print("\n[yellow]중단됨[/yellow]")
         session._persist()
         return
-    runlog.finish(result, changed_files=git_changed_files(session.root))
+    runlog.finish(result, changed_files=resolve_changed_files(session.agent, session.root))
     session.usage_prompt += result.usage.prompt_tokens
     session.usage_completion += result.usage.completion_tokens
     session._persist()

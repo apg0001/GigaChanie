@@ -36,7 +36,7 @@ from gigachanie.loop.builtin_tools import build_registry
 from gigachanie.loop.checkpoint import CheckpointStore
 from gigachanie.loop.hooks import HookRunner
 from gigachanie.loop.procman import ProcessManager
-from gigachanie.loop.runlog import RunLogger, git_changed_files
+from gigachanie.loop.runlog import RunLogger, resolve_changed_files
 from gigachanie.loop.tools import ToolContext
 from gigachanie.permissions import load_permissions
 from gigachanie.serving.base import BackendError, run_sync
@@ -581,7 +581,7 @@ class RpcServer:
                 result = run_sync(
                     agent.run(exp.text, on_event=emit, images=exp.images)
                 )
-                changed = git_changed_files(sess.root)
+                changed = resolve_changed_files(agent, sess.root)
                 runlog.finish(result, changed_files=changed)
                 self._persist_session(sess)
                 self._reply(mid, _result_dict(result, changed))
