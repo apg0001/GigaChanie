@@ -20,6 +20,27 @@ _MAX_OUTPUT = 20_000
 _DEFAULT_TIMEOUT = 60
 
 
+def _syntax_warning(path: str, content: str) -> str:
+    """.py 파일이면 컴파일해 문법을 검사한다. 깨졌으면 모델에 바로 보여줄 경고문.
+
+    약한 모델이 apply_edit/write_file 로 파일 일부만 바꾸다가 문법을 깨는
+    경우가 흔하다(예: 함수 시그니처만 바꾸고 본문을 못 지움). 도구 자체는
+    "성공"했더라도(요청한 문자열 치환은 됐으니) 결과가 파이썬으로 안 읽히면
+    그 자리에서 알려줘야 같은 턴에서 고칠 기회가 생긴다.
+    """
+    if not path.endswith(".py"):
+        return ""
+    try:
+        compile(content, path, "exec")
+    except SyntaxError as exc:
+        where = f" {exc.lineno}행" if exc.lineno else ""
+        return (
+            f"\n\n⚠ 구문 오류(방금 수정 이후):{where} {exc.msg}. "
+            "이 변경이 파일을 깨뜨렸을 수 있습니다 — 확인하고 고치세요."
+        )
+    return ""
+
+
 def _unified_diff(old: str, new: str, path: str) -> str:
     diff = difflib.unified_diff(
         old.splitlines(keepends=True),
@@ -78,6 +99,7 @@ async def _write_file(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
         content=(
             f"{'수정' if exists else '생성'}됨{tag}: {path} "
             f"(+{added}/-{removed} 행)\n{_unified_diff(old_content, new_content, path)[:2000]}"
+            f"{_syntax_warning(path, new_content)}"
         )
     )
 
@@ -136,6 +158,7 @@ async def _apply_edit(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
         content=(
             f"편집 적용됨{tag}: {path}{where} (매칭: {result.method.value})\n"
             f"{_unified_diff(old, final, path)[:2000]}"
+            f"{_syntax_warning(path, final)}"
         )
     )
 
