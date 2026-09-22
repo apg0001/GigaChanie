@@ -3,6 +3,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 from gigachanie.loop.approval import ApprovalMode, ApprovalPolicy
 from gigachanie.loop.builtin_tools import build_registry
 from gigachanie.loop.tools import ToolContext
@@ -126,6 +128,51 @@ def test_apply_edit_부분수정(tmp_path: Path) -> None:
     )
     assert not res.is_error
     assert (tmp_path / "m.py").read_text(encoding="utf-8") == "def f():\n    return 2\n"
+
+
+def test_apply_edit_구문깨지면_경고(tmp_path: Path) -> None:
+    """약한 모델이 들여쓰기를 망가뜨리는 실수를 하는 경우: 치환 자체는
+    '성공'해도 결과 .py 가 깨졌다는 걸 같은 턴에서 바로 알려줘야 한다."""
+    (tmp_path / "calc.py").write_text(
+        "def add(a, b):\n    return a + b\n\ndef sub(a, b):\n    return a - b\n",
+        encoding="utf-8",
+    )
+    res = _run(
+        "apply_edit",
+        {
+            "path": "calc.py",
+            "search": "def sub(a, b):\n    return a - b\n",
+            # 마지막 줄을 일부러 들여쓰기 없이 둬서(모듈 최상단 return) 구문 오류를 만든다
+            "replace": "def multiply(a, b):\n    return a * b\n\nreturn a - b\n",
+        },
+        _ctx(tmp_path),
+    )
+    assert not res.is_error  # 치환 자체는 됐다
+    assert "구문 오류" in res.content
+    # ast.parse 는 이 특정 오류('return' outside function)를 못 잡는다(문법 파싱만
+    # 하고 컴파일 단계 검사는 안 함) — 실제 도구가 쓰는 compile() 로 재확인한다.
+    with pytest.raises(SyntaxError):
+        compile((tmp_path / "calc.py").read_text(encoding="utf-8"), "calc.py", "exec")
+
+
+def test_apply_edit_구문_멀쩡하면_경고없음(tmp_path: Path) -> None:
+    (tmp_path / "m.py").write_text("def f():\n    return 1\n", encoding="utf-8")
+    res = _run(
+        "apply_edit",
+        {"path": "m.py", "search": "    return 1", "replace": "    return 2"},
+        _ctx(tmp_path),
+    )
+    assert "구문 오류" not in res.content
+
+
+def test_write_file_구문깨지면_경고(tmp_path: Path) -> None:
+    res = _run(
+        "write_file",
+        {"path": "broken.py", "content": "def f(:\n    pass\n"},
+        _ctx(tmp_path),
+    )
+    assert not res.is_error
+    assert "구문 오류" in res.content
 
 
 def test_apply_edit_새파일_search_빈문자열(tmp_path: Path) -> None:

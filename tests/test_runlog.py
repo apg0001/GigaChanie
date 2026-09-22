@@ -105,6 +105,29 @@ def test_git_changed_files_새파일도_포함(tmp_path: Path) -> None:
     assert "brandnew.py" in changed
 
 
+def test_git_changed_files_agent디렉터리는_제외(tmp_path: Path) -> None:
+    """.agent/ 는 체크포인트·로그·세션 등 GigaChanie 자체 상태라 "코드 변경"이
+    아니다. 사용자가 아직 .gitignore 안 했어도(흔함, giga init 이 만들어주지
+    않는다) untracked 스캔에 걸려 changed_files 에 새는 걸 막는다 (#69)."""
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=tmp_path, check=True)
+    (tmp_path / "existing.txt").write_text("hello\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-qm", "init"], cwd=tmp_path, check=True)
+
+    (tmp_path / "brandnew.py").write_text("x = 1\n", encoding="utf-8")
+    agent_dir = tmp_path / ".agent" / "checkpoints" / "blobs"
+    agent_dir.mkdir(parents=True)
+    (agent_dir / "abc123").write_text("스냅샷", encoding="utf-8")
+    (tmp_path / ".agent" / "logs").mkdir(parents=True)
+    (tmp_path / ".agent" / "logs" / "runs.jsonl").write_text("{}\n", encoding="utf-8")
+
+    changed = git_changed_files(tmp_path)
+    assert "brandnew.py" in changed
+    assert not any(f.startswith(".agent/") for f in changed)
+
+
 def test_runlog_cli_로그없음(tmp_path: Path) -> None:
     res = runner.invoke(app, ["runlog", "-C", str(tmp_path)])
     assert res.exit_code == 0

@@ -1056,7 +1056,7 @@ stop:
               <tr><td><code>session/history</code></td><td>저장된 세션 목록 (id·제목·모델·턴 수) — <code>giga chat</code> 과 <code>giga serve</code> 대화 모두 포함</td></tr>
               <tr><td><code>models/list</code></td><td>→ <code>{current, backend, models:[{id, display, params, toolCalling, installed, fit}]}</code> — 확장 모델 피커용</td></tr>
               <tr><td><code>models/use</code></td><td><code>{model}</code> — 사용자 설정에 기본 모델로 저장(<code>giga chat</code> 등과 공유)</td></tr>
-              <tr><td><code>session/prompt</code></td><td><code>{sessionId, text}</code> → <code>{ok, finalText, stopReason, steps, tokens, changedFiles}</code>. <code>changedFiles</code> 는 수정된 추적 파일 + 새로 만든(미추적) 파일을 포함하되, <b>이번 턴에 실제로 건드린 파일만</b>(체크포인트 기반) — 커밋 안 하고 여러 턴을 거쳐도 이전 턴 파일이 다시 섞이지 않음. 실행 중 <code>session/event</code> 알림 스트리밍</td></tr>
+              <tr><td><code>session/prompt</code></td><td><code>{sessionId, text}</code> → <code>{ok, finalText, stopReason, steps, tokens, changedFiles}</code>. <code>changedFiles</code> 는 수정된 추적 파일 + 새로 만든(미추적) 파일을 포함하되, <b>이번 턴에 실제로 건드린 파일만</b>(체크포인트 기반) — 커밋 안 하고 여러 턴을 거쳐도 이전 턴 파일이 다시 섞이지 않음. <code>.agent/</code>(체크포인트·로그 등 GigaChanie 자체 상태)는 항상 제외. 실행 중 <code>session/event</code> 알림 스트리밍</td></tr>
               <tr><td><code>session/cancel</code></td><td>실행 중인 프롬프트 취소</td></tr>
               <tr><td><code>session/approve</code></td><td><code>{sessionId, requestId, decision}</code> — allow / deny / always</td></tr>
               <tr><td><code>session/answer</code></td><td><code>{sessionId, requestId, answer}</code> — <code>ask_user</code> 질문에 답</td></tr>
@@ -1107,8 +1107,8 @@ stop:
       <table>
         <thead><tr><th>도구</th><th>설명</th></tr></thead>
         <tbody>
-          <tr><td><code>write_file</code></td><td>파일 전체 쓰기. 승인 시 diff 표시, 내용 동일하면 no-op</td></tr>
-          <tr><td><code>apply_edit</code></td><td>부분 수정. <code>search</code>를 찾아 <code>replace</code>로 교체. 빈 <code>search</code>=새 파일, <code>replace_all: true</code>=여러 곳 전부</td></tr>
+          <tr><td><code>write_file</code></td><td>파일 전체 쓰기. 승인 시 diff 표시, 내용 동일하면 no-op. 결과가 <code>.py</code> 면 구문 검사 후 깨졌으면 결과에 <code>⚠ 구문 오류</code> 경고 추가(도구 자체는 실패 아님)</td></tr>
+          <tr><td><code>apply_edit</code></td><td>부분 수정. <code>search</code>를 찾아 <code>replace</code>로 교체. 빈 <code>search</code>=새 파일, <code>replace_all: true</code>=여러 곳 전부. <code>.py</code> 구문 검사는 write_file 과 동일</td></tr>
           <tr><td><code>run_shell</code></td><td>셸 명령 실행 (Windows=PowerShell, 그 외=sh). 타임아웃 최대 600초, 종료코드 반환. 출력은 나오는 대로 실시간 표시(<code>tool_output</code> 이벤트)되고 타임아웃돼도 그때까지 출력이 결과에 남음. Windows 자식은 UTF-8 로 강제</td></tr>
           <tr><td><code>run_background</code></td><td>오래 도는 명령을 분리 실행하고 핸들 반환 (dev 서버 등)</td></tr>
           <tr><td><code>tail_logs</code> / <code>wait_for_log</code></td><td>백그라운드 프로세스 로그 조회 / 패턴 대기</td></tr>
